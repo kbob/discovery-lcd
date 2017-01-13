@@ -6,6 +6,7 @@
 
     SUBMODULES := libopencm3 freetype2 agg
    OPENCM3_DIR := submodules/libopencm3
+  FREETYPE_DIR := submodules/freetype2
        AGG_DIR := submodules/agg
         FT_DIR := submodules/freetype
 
@@ -26,28 +27,57 @@
 # Included makefiles populate these.
         DFILES :=
           DIRT := 
+          LIBS :=
  EXAMPLE_ELVES :=
 
 
-all: opencm3 agg lib examples
+all: $(SUBMODULES) $(LIBS) examples
 
 include src/Dir.make
-include pixmaps/Dir.make
+# include pixmaps/Dir.make
 include examples/Dir.make
 
 clean:
 	rm -rf $(DIRT) $(DFILES)
 
 realclean: clean
+	$(MAKE) -C $
 	$(MAKE) -C $(OPENCM3_DIR) clean
+	$(MAKE) -C $(FREETYPE_DIR) clean
 	$(MAKE) -C $(AGG_DIR) clean
 	$(MAKE) -C $(AGG_DIR)/examples/macosx_sdl clean
 	find $(AGG_DIR) -name '*.o' -exec rm -f '{}' ';'
 
-opencm3:
+libopencm3:
 #       # XXX libopencm3 can't stop rebuilding the world.
-	@ [ -f $(OPENCM3_DIR)/lib/libopencm3_stm32f4.a ] || \
+	@ [ -f $(OPENCM3_DIR)/lib/libopencm3_stm32f4.a ] ||             \
 	  $(MAKE) -C $(OPENCM3_DIR) TARGETS=stm32/f4
+
+   FREETYPE_CFGR := $(FREETYPE_DIR)/builds/unix/configure
+ FREETYPE_CFG_MK := $(FREETYPE_DIR)/config.mk
+
+freetype2: $(FREETYPE_CFG_MK)
+	@ $(MAKE)                                                       \
+	          -C $(FREETYPE_DIR)                                    \
+	          AR="$(AR)"                                            \
+	          CC="$(CC)"                                            \
+	          LD="$(CC)"                                            \
+	          A=a                                                   \
+	          O=o                                                   \
+	          LINK_LIBRARY='$$(AR) cr $$@ $$(OBJECTS_LIST)'
+
+$(FREETYPE_CFG_MK): $(FREETYPE_CFGR)
+	$(MAKE) -C $(FREETYPE_DIR)                                      \
+	        setup                                                   \
+	        CFG="--disable-shared                                   \
+	             --disable-mmap                                     \
+	             --without-zlib                                     \
+	             --without-bzip2                                    \
+	             --without-png                                      \
+	             --without-harfbuzz"
+
+$(FREETYPE_CFGR):
+	cd $(FREETYPE_DIR) && sh autogen.sh
 
 agg:
 #	# XXX submake is too noisy.
