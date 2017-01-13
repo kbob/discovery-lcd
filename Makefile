@@ -8,7 +8,6 @@
    OPENCM3_DIR := submodules/libopencm3
   FREETYPE_DIR := submodules/freetype2
        AGG_DIR := submodules/agg
-        FT_DIR := submodules/freetype
 
       CPPFLAGS := -DSTM32F4
       CPPFLAGS += -Isrc -Iinclude -I$(OPENCM3_DIR)/include
@@ -41,7 +40,6 @@ clean:
 	rm -rf $(DIRT) $(DFILES)
 
 realclean: clean
-	$(MAKE) -C $
 	$(MAKE) -C $(OPENCM3_DIR) clean
 	$(MAKE) -C $(FREETYPE_DIR) clean
 	$(MAKE) -C $(AGG_DIR) clean
@@ -60,8 +58,7 @@ freetype2: $(FREETYPE_CFG_MK)
 	@ $(MAKE)                                                       \
 	          -C $(FREETYPE_DIR)                                    \
 	          AR="$(AR)"                                            \
-	          CC="$(CC)"                                            \
-	          LD="$(CC)"                                            \
+	          CC="$(CC) $(TARGET_ARCH)"                             \
 	          A=a                                                   \
 	          O=o                                                   \
 	          LINK_LIBRARY='$$(AR) cr $$@ $$(OBJECTS_LIST)'
