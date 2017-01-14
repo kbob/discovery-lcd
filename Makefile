@@ -19,7 +19,7 @@
                   -g -O0
        LDFLAGS := --static -nostartfiles                                \
                   -Lsrc -L$(OPENCM3_DIR)/lib                            \
-                  -Tstm32f4-1bitsy.ld -Wl,--gc-sections
+                  -Tstm32f429i-discovery.ld -Wl,--gc-sections
   POST_LDFLAGS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
  LDLIB_OPENCM3 := -lopencm3_stm32f4
 
@@ -55,7 +55,7 @@ libopencm3:
  FREETYPE_CFG_MK := $(FREETYPE_DIR)/config.mk
 
 freetype2: $(FREETYPE_CFG_MK)
-	@ $(MAKE)                                                       \
+	@ $(MAKE) -s --no-print-dir                                     \
 	          -C $(FREETYPE_DIR)                                    \
 	          AR="$(AR)"                                            \
 	          CC="$(CC) $(TARGET_ARCH)"                             \

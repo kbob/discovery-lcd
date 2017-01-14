@@ -1,3 +1,6 @@
+*.d
+.gdbinit
+
 # Object files
 *.o
 *.ko
