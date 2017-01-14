@@ -81,7 +81,7 @@ extern const lcd_config discovery_lcd;
 // https://www.adafruit.com/product/1596
 extern const lcd_config adafruit_p1596_lcd;
 
-extern void init_lcd(const lcd_config *, const lcd_settings *);
+extern void init_lcd(const lcd_config *);
 extern void lcd_set_frame_callback(lcd_settings_callback *);
 extern void lcd_set_line_callback(lcd_settings_callback *);
 

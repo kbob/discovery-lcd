@@ -57,8 +57,9 @@ int main(void)
     init_clocks(&MY_CLOCKS);
     systick_setup(MY_CLOCKS.ahb_frequency);
     lcd_pwm_setup();
-    init_lcd(&MY_SCREEN, &my_settings);
+    init_lcd(&MY_SCREEN);
 
+    lcd_load_settings(&my_settings, false);
     while (1) {
         fade_in_LCD();
     }

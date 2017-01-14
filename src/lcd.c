@@ -104,6 +104,7 @@ static const gpio_pin gpio_pins[] = {
 static const size_t gpio_pin_count = (&gpio_pins)[1] - gpio_pins;
 
 static lcd_config current_config;
+// Default settings is black screen, neither layer enabled.
 static lcd_settings current_settings;
 static lcd_settings_callback *frame_callback;
 static lcd_settings_callback *line_callback;
@@ -317,7 +318,7 @@ void lcd_load_settings(const lcd_settings *settings, bool immediate)
         current_settings = *settings;
 }
 
-extern void init_lcd(const lcd_config *cfg, const lcd_settings *settings)
+extern void init_lcd(const lcd_config *cfg)
 {
     current_config = *cfg;
 
@@ -383,14 +384,14 @@ extern void init_lcd(const lcd_config *cfg, const lcd_settings *settings)
     uint32_t den = cfg->use_dither ? LTDC_GCR_DITHER_ENABLE : 0;
     LTDC_GCR |= LTDC_GCR_PCPOL_ACTIVE_LOW | den;
 
-    LTDC_BCCR = settings->bg_pixel;
+    LTDC_BCCR = 0x00000000;
     // Configure interrupts.
     // LTDC_IER = LTDC_IER_RRIE | LTDC_IER_TERRIE | LTDC_IER_FUIE | LTDC_IER_LIE;
     LTDC_IER = LTDC_IER_RRIE;
     nvic_enable_irq(NVIC_LCD_TFT_IRQ);
 
     // lcd_load_settings(settings, true);
-    lcd_load_settings(settings, false);
+    lcd_load_settings(&current_settings, false);
 
     /* Enable the LCD-TFT controller. */
     LTDC_GCR |= LTDC_GCR_LTDC_ENABLE;
