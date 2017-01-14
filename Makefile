@@ -33,7 +33,6 @@
 all: $(SUBMODULES) $(LIBS) examples
 
 include src/Dir.make
-# include pixmaps/Dir.make
 include examples/Dir.make
 
 clean:
@@ -55,6 +54,7 @@ libopencm3:
  FREETYPE_CFG_MK := $(FREETYPE_DIR)/config.mk
 
 freetype2: $(FREETYPE_CFG_MK)
+#	# XXX submake is too noisy.
 	@ $(MAKE) -s --no-print-dir                                     \
 	          -C $(FREETYPE_DIR)                                    \
 	          AR="$(AR)"                                            \

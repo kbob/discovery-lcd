@@ -104,7 +104,7 @@ static const gpio_pin gpio_pins[] = {
 static const size_t gpio_pin_count = (&gpio_pins)[1] - gpio_pins;
 
 static lcd_config current_config;
-// Default settings is black screen, neither layer enabled.
+// Default settings are black screen, neither layer enabled.
 static lcd_settings current_settings;
 static lcd_settings_callback *frame_callback;
 static lcd_settings_callback *line_callback;
@@ -271,7 +271,7 @@ static void lcd_load_layer_settings(int layer, const lcd_layer_settings *ls)
         else
             bf2 = LTDC_LxBFCR_BF2_CONST_ALPHA;
         LTDC_LxDCCR(layer) = ls->default_pixel;
-        LTDC_LxBFCR(layer) = (bf1 << 8 | bf2 << 0);
+        LTDC_LxBFCR(layer) = bf1 << 8 | bf2 << 0;
         LTDC_LxCACR(layer) = ls->alpha;
 
         // Set color key.

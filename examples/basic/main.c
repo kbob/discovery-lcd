@@ -10,26 +10,6 @@ int main(void);
 
 lcd_settings my_settings = {
     .bg_pixel = 0xFFFF0000,
-    .layer1 = {
-        .is_enabled = false,
-    },
-    .layer2 = {
-#if 0
-        .is_enabled = true,
-        .default_pixel = 0xFF0000FF,
-        .alpha = 0xFF,
-        .position = { 100, 100 },
-        .pixels = {
-            .pitch = 200,
-            .format = PF_RGB565,
-            .w = 600,
-            .h = 280,
-            .pixels = (void *)main,
-        },
-#else
-        .is_enabled = false,
-#endif
-    },
 };
 
 static void fade_in_LCD(void)

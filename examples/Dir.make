@@ -1,5 +1,5 @@
        D := examples
 
-EXAMPLES := basic
+EXAMPLES := basic layers
 
 include $(EXAMPLES:%=$D/%/Dir.make)

@@ -2,7 +2,7 @@
 
     LIBGFX := $D/liblcd.a
 #     CFILES := button.c gfx.c lcd.c gpio.c i2c.c pixtile.c systick.c touch.c
-    CFILES := clock.c gpio.c lcd.c lcd-pwm.c systick.c
+    CFILES := clock.c gpio.c lcd.c lcd-pwm.c sdram.c systick.c
 
    $D_LIBS := $(LIBGFX)
  $D_CFILES := $(CFILES:%=$D/%)
