@@ -12,13 +12,11 @@
 #define L1W 100
 
 #define L2PF al44
-#define L2H 100
-#define L2W 100
+#define L2H 256
+#define L2W 256
 
 L1PF layer1_buffer[L1H][L1W] SDRAM_BANK_0;
 L2PF layer2_buffer[L2H][L2W] SDRAM_BANK_2;
-
-int main(void);
 
 lcd_settings my_settings = {
     .bg_pixel = 0xFFFF0000,
@@ -63,8 +61,8 @@ static void draw_layer_1(void)
 
 static void draw_layer_2(void)
 {
-    for (size_t y = 0; y < L1H; y++)
-        for (size_t x = 0; x < L1W; x++)
+    for (size_t y = 0; y < L2H; y++)
+        for (size_t x = 0; x < L2W; x++)
             layer2_buffer[y][x] = y >> 4 << 4 | x >> 4;
 }
 

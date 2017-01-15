@@ -6,8 +6,6 @@
 #define MY_CLOCKS (rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ])
 #define MY_SCREEN adafruit_p1596_lcd
 
-int main(void);
-
 lcd_settings my_settings = {
     .bg_pixel = 0xFFFF0000,
 };

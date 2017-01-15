@@ -41,12 +41,12 @@ typedef struct pixmap {
     void     *pixels;
 } pixmap;
 
-typedef xrgb_888 clut16[16];
-typedef xrgb_888 clut256[256];
+typedef xrgb_888 lcd_clut16[16];
+typedef xrgb_888 lcd_clut256[256];
 
 typedef union lcd_clut {
-    clut16    c16;
-    clut256   c256;
+    lcd_clut16  c16;
+    lcd_clut256 c256;
 } lcd_clut;
 
 typedef struct lcd_layer_settings {
@@ -59,7 +59,14 @@ typedef struct lcd_layer_settings {
     uint8_t   alpha;
     ipoint    position;
     pixmap    pixels;
+#if 1
     lcd_clut *clut;             // NULL for no CLUT
+#else
+    union {
+        lcd_clut16 *clut16;
+        lcd_clut256 *clut256;
+    };
+#endif
 } lcd_layer_settings;
 
 // The settings may change for every video frame.

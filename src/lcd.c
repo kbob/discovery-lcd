@@ -255,9 +255,18 @@ static void lcd_load_layer_settings(int layer, const lcd_layer_settings *ls)
         if (ls->clut)
         {
             size_t clut_count = pixfmt_clut_size(ls->pixels.format);
-            for (size_t i = 0; i < clut_count; i++)
-                LTDC_LxCLUTWR(layer) =
-                    i << 24 | ((*ls->clut).c256[i] & 0x00FFFFFF);
+            if (clut_count == 256) {
+                for (size_t i = 0; i < clut_count; i++)
+                    LTDC_LxCLUTWR(layer) =
+                        i << 24 | ((*ls->clut).c256[i] & 0x00FFFFFF);
+            } else if (clut_count == 16) {
+                // For 4 bit clut, load entries 0x00, 0x11, 0x22, etc.
+                for (size_t i = 0; i < clut_count; i++) {
+                    uint32_t clutadd = i << 24 | i << 28;
+                    LTDC_LxCLUTWR(layer) =
+                        clutadd | ((*ls->clut).c256[i] & 0x00FFFFFF);
+                }
+            }
         }
 
         // Set default color and blending factors.
@@ -390,10 +399,15 @@ extern void init_lcd(const lcd_config *cfg)
 
     // Configure the synchronous signals and clock polarity.
     // XXX should get this from config.
+    // Also dither.
+    uint32_t drw_mask = 0b111 << 12; // XXX should be defined in libopencm3.
+    uint32_t dgw_mask = 0b111 <<  8;
+    uint32_t dbw_mask = 0b111 <<  4;
+    uint32_t dxw_mask = drw_mask | dgw_mask | dbw_mask;
+    uint32_t dxw = LTDC_GCR & dxw_mask;
     uint32_t den = cfg->use_dither ? LTDC_GCR_DITHER_ENABLE : 0;
-    LTDC_GCR |= LTDC_GCR_PCPOL_ACTIVE_LOW | den;
+    LTDC_GCR = LTDC_GCR_PCPOL_ACTIVE_LOW | den | dxw;
 
-    LTDC_BCCR = 0x00000000;
     // Configure interrupts.
     LTDC_IER = LTDC_IER_RRIE | LTDC_IER_TERRIE | LTDC_IER_FUIE | LTDC_IER_LIE;
     nvic_enable_irq(NVIC_LCD_TFT_IRQ);
