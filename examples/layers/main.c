@@ -58,7 +58,7 @@ static void draw_layer_1(void)
 {
     for (size_t y = 0; y < L1H; y++)
         for (size_t x = 0; x < L1W; x++)
-            layer1_buffer[y][x] = ((L1H + x - y) & 7) < 4 ? 0xF00F : 0x300F;
+            layer1_buffer[y][x] = ((L1H + x - y) >> 3) & 1 ? 0xF00F : 0x50F0;
 }
 
 static void draw_layer_2(void)
