@@ -1,5 +1,5 @@
        D := examples
 
-EXAMPLES := basic layers
+EXAMPLES := animate basic layers
 
 include $(EXAMPLES:%=$D/%/Dir.make)

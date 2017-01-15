@@ -318,6 +318,16 @@ void lcd_load_settings(const lcd_settings *settings, bool immediate)
         current_settings = *settings;
 }
 
+void lcd_set_frame_callback(lcd_settings_callback *f)
+{
+    frame_callback = f;
+}
+
+void lcd_set_line_callback(lcd_settings_callback *f)
+{
+    line_callback = f;
+}
+
 extern void init_lcd(const lcd_config *cfg)
 {
     current_config = *cfg;
@@ -364,7 +374,6 @@ extern void init_lcd(const lcd_config *cfg)
     // Configure the Synchronous timings: VSYNC, HSYNC,
     // Vertical and Horizontal back porch, active data area, and
     // the front porch timings.
-    //
     uint32_t hsw    = cfg->h_sync - 1;
     uint32_t vsh    = cfg->v_sync - 1;
     uint32_t ahbp   = hsw  + cfg->h_back_porch;
@@ -386,8 +395,7 @@ extern void init_lcd(const lcd_config *cfg)
 
     LTDC_BCCR = 0x00000000;
     // Configure interrupts.
-    // LTDC_IER = LTDC_IER_RRIE | LTDC_IER_TERRIE | LTDC_IER_FUIE | LTDC_IER_LIE;
-    LTDC_IER = LTDC_IER_RRIE;
+    LTDC_IER = LTDC_IER_RRIE | LTDC_IER_TERRIE | LTDC_IER_FUIE | LTDC_IER_LIE;
     nvic_enable_irq(NVIC_LCD_TFT_IRQ);
 
     // lcd_load_settings(settings, true);
@@ -412,7 +420,7 @@ void lcd_tft_isr(void)
             LTDC_ICR = LTDC_ICR_CRRIF;
         }
     }        
-    if ((isr & LTDC_ISR_RRIF) && line_callback) {
+    if ((isr & LTDC_ISR_RRIF) && frame_callback) {
         lcd_settings *new_settings = (*frame_callback)(&current_settings);
         if (new_settings)
             lcd_load_settings(new_settings, false);

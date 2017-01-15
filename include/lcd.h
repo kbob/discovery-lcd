@@ -7,13 +7,8 @@
 
 #include "pixfmts.h"
 
-// unchanging configuration:
-//  screen size
-//  refresh rate
-//  timings: vert/horiz blank, front/back porch
-
-
-
+// The configuration is not expected to change over the life
+// of an application.
 typedef struct lcd_config {
     uint16_t width;
     uint16_t height;
@@ -67,6 +62,7 @@ typedef struct lcd_layer_settings {
     lcd_clut *clut;             // NULL for no CLUT
 } lcd_layer_settings;
 
+// The settings may change for every video frame.
 typedef struct lcd_settings {
     argb8888  bg_pixel;
     uint16_t  interrupt_line;
@@ -74,6 +70,10 @@ typedef struct lcd_settings {
     lcd_layer_settings layer2;
 } lcd_settings;
 
+// The callback may update the LCD settings in a few ways.
+//  - it may modify the settings passed in and return them.
+//  - it may return a different settings structure.
+//  - it may call lcd_load_settings() and return NULL.
 typedef lcd_settings *lcd_settings_callback(lcd_settings *);
 
 extern const lcd_config discovery_lcd;
