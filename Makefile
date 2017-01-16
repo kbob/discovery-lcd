@@ -1,5 +1,6 @@
             AR := arm-none-eabi-ar
             CC := arm-none-eabi-gcc
+       OBJCOPY := arm-none-eabi-objcopy
         HOSTCC := cc
        HOSTCXX := c++
         HOSTLD := c++
@@ -10,17 +11,22 @@
        AGG_DIR := submodules/agg
 
       CPPFLAGS := -DSTM32F4
-      CPPFLAGS += -Isrc -Iinclude -I$(OPENCM3_DIR)/include
+      CPPFLAGS += -Isrc                                                 \
+                  -Iinclude                                             \
+                  -I$(OPENCM3_DIR)/include                              \
+                  -I$(FREETYPE_DIR)/include
    TARGET_ARCH := -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
         CFLAGS := -MD -std=gnu99                                        \
                   -Wall -Wundef -Wextra -Wshadow -Werror                \
                   -Wimplicit-function-declaration -Wredundant-decls     \
                   -Wmissing-prototypes -Wstrict-prototypes              \
+                  -Wno-parentheses                                      \
                   -g -O0
        LDFLAGS := --static -nostartfiles                                \
-                  -Lsrc -L$(OPENCM3_DIR)/lib                            \
+                  -Lsrc -L$(OPENCM3_DIR)/lib -L$(FREETYPE_DIR)/objs     \
                   -Tstm32f429i-discovery.ld -Wl,--gc-sections
   POST_LDFLAGS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
+LDLIB_FREETYPE := -lfreetype
  LDLIB_OPENCM3 := -lopencm3_stm32f4
 
 # Included makefiles populate these.
