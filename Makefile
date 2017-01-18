@@ -1,60 +1,60 @@
-            AR := arm-none-eabi-ar
-            CC := arm-none-eabi-gcc
-           CXX := arm-none-eabi-g++
-       OBJCOPY := arm-none-eabi-objcopy
-        HOSTCC := cc
-       HOSTCXX := c++
-        HOSTLD := c++
+# tools
+              AR := arm-none-eabi-ar
+              CC := arm-none-eabi-gcc
+             CXX := arm-none-eabi-g++
+         OBJCOPY := arm-none-eabi-objcopy
+          HOSTCC := cc
+         HOSTCXX := c++
+          HOSTLD := c++
+            ECHO := $(if $(findstring s, $(MAKEFLAGS)),:,echo)
 
-    SUBMODULES := libopencm3 freetype2 agg
-   OPENCM3_DIR := submodules/libopencm3
-  FREETYPE_DIR := submodules/freetype2
-       AGG_DIR := submodules/agg
+# submodules
+      SUBMODULES := libopencm3 freetype2 agg
+     OPENCM3_DIR := submodules/libopencm3
+    FREETYPE_DIR := submodules/freetype2
+         AGG_DIR := submodules/agg
+   LDLIB_OPENCM3 := -lopencm3_stm32f4
+  LDLIB_FREETYPE := -lfreetype
+       LDLIB_AGG := -lagg
 
-      CPPFLAGS := -DSTM32F4
-      CPPFLAGS += -Isrc                                                 \
-                  -Iinclude                                             \
-                  -I$(OPENCM3_DIR)/include                              \
-                  -I$(FREETYPE_DIR)/include                             \
-                  -I$(AGG_DIR)/include
-   TARGET_ARCH := -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
-           OPT := -O0
-        CFLAGS := -MD -std=gnu99                                        \
-                  -Wall -Wundef -Wextra -Wshadow -Werror                \
-                  -Wimplicit-function-declaration -Wredundant-decls     \
-                  -Wmissing-prototypes -Wstrict-prototypes              \
-                  -Wno-parentheses                                      \
-                  -g $(OPT)
-      CXXFLAGS := -MD -g $(OPT)
-       LDFLAGS := --static -nostartfiles                                \
-                  -Lsrc                                                 \
-                  -L$(OPENCM3_DIR)/lib                                  \
-                  -L$(FREETYPE_DIR)/objs                                \
-                  -L$(AGG_DIR)/src                                      \
-                  -Tstm32f429i-discovery.ld -Wl,--gc-sections
-  POST_LDFLAGS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
-LDLIB_FREETYPE := -lfreetype
- LDLIB_OPENCM3 := -lopencm3_stm32f4
-     LDLIB_AGG := -lagg
+# compiler options
+        CPPFLAGS := -DSTM32F4
+        CPPFLAGS += -Isrc                                               \
+                    -Iinclude                                           \
+                    -I$(OPENCM3_DIR)/include                            \
+                    -I$(FREETYPE_DIR)/include                           \
+                    -I$(AGG_DIR)/include
+     TARGET_ARCH := -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+             OPT := -O0
+          CFLAGS := -MD -std=gnu99                                      \
+                    -Wall -Wundef -Wextra -Wshadow -Werror              \
+                    -Wimplicit-function-declaration -Wredundant-decls   \
+                    -Wmissing-prototypes -Wstrict-prototypes            \
+                    -Wno-parentheses                                    \
+                    -g $(OPT)
+        CXXFLAGS := -Wall -Werror -MD -g $(OPT)
+         LDFLAGS := --static -nostartfiles                              \
+                    -Lsrc                                               \
+                    -L$(OPENCM3_DIR)/lib                                \
+                    -L$(FREETYPE_DIR)/objs                              \
+                    -L$(AGG_DIR)/src                                    \
+                    -Tstm32f429i-discovery.ld -Wl,--gc-sections
+    POST_LDFLAGS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
 
-# Included makefiles populate these.
-        DFILES :=
-          DIRT := 
-          LIBS :=
- EXAMPLE_ELVES :=
-
-
-ifeq (,$(findstring s,$(MAKEFLAGS)))
-	ECHO := echo
-else
-	ECHO := :
-endif
-
+# ----------------------------------------------------------------------
 
 all: $(SUBMODULES) $(LIBS) examples
 
+# Included makefiles populate these.
+          DFILES := # auto dependency files
+            DIRT := # removed by `clean` targets
+            LIBS := # project libraries
+   EXAMPLE_ELVES := # ELF files
+
 include src/Dir.make
 include examples/Dir.make
+
+examples: $(EXAMPLE_ELVES)
 
 clean:
 	rm -rf $(DIRT) $(DFILES)
@@ -66,12 +66,18 @@ realclean: clean
 	$(MAKE) -C $(AGG_DIR)/examples/macosx_sdl clean
 	find $(AGG_DIR) -name '*.o' -exec rm -f '{}' ';'
 
-.PHONY: clean realcleanlibopencm3 freetype2 agg examples
+# ---  libopencm3 submodule  -------------------------------------------
 
-libopencm3:
+     OPENCM3_LIB := $(OPENCM3_DIR)/lib/libopencm3_stm32f4.a
+
+libopencm3: $(OPENCM3_LIB)
         # XXX libopencm3 can't stop rebuilding the world.
-	@ [ -f $(OPENCM3_DIR)/lib/libopencm3_stm32f4.a ] ||             \
+        # XXX So if the library exists, do not invoke make.
+
+$(OPENCM3_LIB):
 	$(MAKE) -C $(OPENCM3_DIR) TARGETS=stm32/f4
+
+# ---  freetype2 submodule  --------------------------------------------
 
    FREETYPE_CFGR := $(FREETYPE_DIR)/builds/unix/configure
  FREETYPE_CFG_MK := $(FREETYPE_DIR)/config.mk
@@ -101,6 +107,8 @@ $(FREETYPE_CFG_MK): $(FREETYPE_CFGR)
 $(FREETYPE_CFGR):
 	cd $(FREETYPE_DIR) && sh autogen.sh
 
+# ---  agg submodule  --------------------------------------------------
+
 agg:
         # Silent unless make does something
 	@ $(MAKE) -s --no-print-dir -q -C $(AGG_DIR) || {               \
@@ -113,7 +121,7 @@ agg:
 	            TARGET_ARCH="$(TARGET_ARCH)"                        \
 	    ; }
 
-examples: $(EXAMPLE_ELVES)
+# ---  Emacs tag file---------------------------------------------------
 
 TAGS::
 	{                                                               \
@@ -121,15 +129,25 @@ TAGS::
 	         examples                                               \
 	         $(OPENCM3_DIR)/lib/{cm3,stm32}                         \
 	         $(FREETYPE_DIR)/src                                    \
+	         $(AGG_DIR)                                             \
 	         -name '*.c*';                                          \
 	    find include                                                \
 	         $(OPENCM3_DIR)/include/libopencm3/{cm3,stm32}          \
 	         $(FREETYPE_DIR)/include                                \
+	         $(AGG_DIR)                                             \
 	         -name '*.h*';                                          \
 	} | xargs etags -I
 
+DIRT += TAGS
+
+# ---  verify submodules populated  ------------------------------------
+
 ifeq ($(wildcard $(OPENCM3_DIR)/*),)
     missing_submodule := libopencm3
+endif
+
+ifeq ($(wildcard $(FREETYPE_DIR)/*),)
+    missing_submodule := freetype2
 endif
 
 ifeq ($(wildcard $(AGG_DIR)/*),)
@@ -150,4 +168,8 @@ ifdef missing_submodule
             before running make)
 endif
 
+# ---  auto dependencies  ----------------------------------------------
+
 -include $(DFILES)
+
+.PHONY: all examples clean realclean libopencm3 freetype2 agg

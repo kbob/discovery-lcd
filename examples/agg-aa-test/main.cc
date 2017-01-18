@@ -125,6 +125,7 @@ namespace agg {
         m_initial_width = width;
         m_initial_height = height;
         on_init();
+        return true;
     }
 
     int platform_support::run()
