@@ -1,9 +1,11 @@
 #include "lcd-pwm.h"
 
+#include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/timer.h>
 
 #include "gpio.h"
+#include "systick.h"
 
 // PWM brightness pin
 //   Pin PF6
@@ -18,6 +20,15 @@
 #define PWM_PIN   GPIO6
 #define DISP_PORT GPIOE
 #define DISP_PIN  GPIO4
+
+typedef struct fade_params {
+    uint16_t l0;
+    uint16_t l1;
+    uint32_t t0;
+    uint32_t t1;
+} fade_params;
+
+static fade_params fader;
 
 static const gpio_pin lcd_pwm_pins[] = {
     {

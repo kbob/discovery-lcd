@@ -32,7 +32,7 @@ const lcd_config adafruit_p1596_lcd = {
     .height        = 480,
     {
         .sain      = 180,
-        .sair      = 90,
+        .sair      = 3,
     },
     .h_sync        = 48,
     .h_back_porch  = 88,
@@ -195,14 +195,17 @@ static size_t pixfmt_clut_size(pixfmt f)
 
 static void lcd_load_layer_settings(int layer, const lcd_layer_settings *ls)
 {
-    if (ls->is_enabled) {
+    bool is_enabled = ls->is_enabled;
+    int x, y, w, h;
+    intptr_t pix_addr;
+    if (is_enabled) {
 
         // Clip position and size to active window.
-        int x = ls->position.x;
-        int y = ls->position.y;
-        int w = ls->pixels.w;
-        int h = ls->pixels.h;
-        intptr_t pix_addr = (intptr_t)ls->pixels.pixels;
+        x = ls->position.x;
+        y = ls->position.y;
+        w = ls->pixels.w;
+        h = ls->pixels.h;
+        pix_addr = (intptr_t)ls->pixels.pixels;
         if (x < 0) {            // clip left
             w -= -x;
             pix_addr += -x * pixfmt_size_bytes(ls->pixels.format);
@@ -218,6 +221,12 @@ static void lcd_load_layer_settings(int layer, const lcd_layer_settings *ls)
         if (y + h >= current_config.height) // clip bottom
             h = current_config.height - y;
 
+        // Disable if nothing visible.
+        if (w <= 0 || h <= 0)
+            is_enabled = false;
+    }
+
+    if (is_enabled) {
         // Load position.
         uint32_t whsppos = (current_config.h_sync +
                             current_config.h_back_porch +
@@ -287,7 +296,9 @@ static void lcd_load_layer_settings(int layer, const lcd_layer_settings *ls)
         LTDC_LxCKCR(layer) = ls->color_key_pixel;
 
         // Enable layer and CLUT.
-        uint32_t cluten = ls->clut ? LTDC_LxCR_COLTAB_ENABLE : 0;
+        uint32_t cluten = 0;
+        if (ls->clut && pixfmt_clut_size(ls->pixels.format) != 0)
+            cluten = LTDC_LxCR_COLTAB_ENABLE;
         uint32_t colken = ls->uses_color_key ? LTDC_LxCR_COLKEY_ENABLE : 0;
         uint32_t len = LTDC_LxCR_LAYER_ENABLE;
         LTDC_LxCR(layer) = cluten | colken | len;
@@ -321,7 +332,6 @@ void lcd_load_settings(const lcd_settings *settings, bool immediate)
         LTDC_SRCR = LTDC_SRCR_IMR;
     else
         LTDC_SRCR = LTDC_SRCR_VBR;
-
     // Save for next time.
     if (&current_settings != settings)
         current_settings = *settings;
@@ -426,7 +436,7 @@ void lcd_tft_isr(void)
                 LTDC_ICR_CTERRIF |
                 LTDC_ICR_CFUIF   |
                 LTDC_ICR_CLIF);
-    assert(!(isr & (LTDC_ISR_TERRIF | LTDC_ISR_FUIF)));
+    // assert(!(isr & (LTDC_ISR_TERRIF | LTDC_ISR_FUIF)));
     if ((isr & LTDC_ISR_LIF) && line_callback) {
         lcd_settings *new_settings = (*line_callback)(&current_settings);
         if (new_settings) {

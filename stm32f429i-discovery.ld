@@ -24,9 +24,9 @@
 /* Define memory regions. */
 MEMORY
 {
-	rom (rx) : ORIGIN = 0x08000000, LENGTH = 2048K
-	ram (rwx) : ORIGIN = 0x10000000, LENGTH = 64K /* (kbob) CCM is faster */
-	system_ram (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+        rom (rx) : ORIGIN = 0x08000000, LENGTH = 2048K
+        ram (rwx) : ORIGIN = 0x10000000, LENGTH = 64K /* (kbob) CCM is faster */
+        system_ram (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
         /* SDRAM is 8 MB, has four banks of 2 MB. */
         sdram_0 (rwx) : ORIGIN = 0xD0000000, LENGTH = 2M
         sdram_1 (rwx) : ORIGIN = 0xD0200000, LENGTH = 2M
@@ -36,21 +36,23 @@ MEMORY
 
 SECTIONS
 {
-	.system_ram (NOLOAD) : {
-		*(.system_ram)
-	} >system_ram
-	.sdram_0 (NOLOAD) : {
-		*(.sdram_bank_0)
-	} >sdram_0
-	.sdram_1 (NOLOAD) : {
-		*(.sdram_bank_1)
-	} >sdram_1
-	.sdram_2 (NOLOAD) : {
-		*(.sdram_bank_2)
-	} >sdram_2
-	.sdram_3 (NOLOAD) : {
-		*(.sdram_bank_3)
-	} >sdram_3
+        .system_ram (NOLOAD) : {
+                system_ram_start = .;
+                system_ram_end = . + 128K;
+                *(.system_ram)
+        } >system_ram
+        .sdram_0 (NOLOAD) : {
+                *(.sdram_bank_0)
+        } >sdram_0
+        .sdram_1 (NOLOAD) : {
+                *(.sdram_bank_1)
+        } >sdram_1
+        .sdram_2 (NOLOAD) : {
+                *(.sdram_bank_2)
+        } >sdram_2
+        .sdram_3 (NOLOAD) : {
+                *(.sdram_bank_3)
+        } >sdram_3
 }
 /* Include the common ld script. */
 INCLUDE libopencm3_stm32f4.ld

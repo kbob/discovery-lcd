@@ -3,12 +3,20 @@
 
 #include <stdint.h>
 
-typedef void systick_handler(uint32_t millis);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern volatile uint32_t system_millis;
+    typedef void systick_handler(uint32_t millis);
 
-extern void systick_setup(uint32_t cpu_freq);
+    extern volatile uint32_t system_millis;
 
-extern void register_systick_handler(systick_handler *);
+    extern void systick_setup(uint32_t cpu_freq);
+
+    extern void register_systick_handler(systick_handler *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !SYSTICK_included */
