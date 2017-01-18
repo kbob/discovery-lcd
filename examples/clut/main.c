@@ -10,7 +10,7 @@
 #define MY_SCREEN adafruit_p1596_lcd
 
 #define L1PF al44
-#define L1W 64
+#define L1W 200
 #define L1H 330
 #define L1X ((800 - L1W) / 2)
 #define L1Y ((480 - L1H) / 2)
@@ -24,12 +24,12 @@
 #define L2NCOLOR (6 * 64)
 #define L2NCLU (L2NCOLOR + 256)
 
-L1PF layer1_pixel_buf[L1H][L1W] SDRAM_BANK_0;
-L2PF layer2_pixel_buf[L2H][L2W] SDRAM_BANK_1;
+static L1PF layer1_pixel_buf[L1H][L1W] SDRAM_BANK_0;
+static L2PF layer2_pixel_buf[L2H][L2W] SDRAM_BANK_1;
 static lcd_clut16 layer1_clut;
 static xrgb_888 layer2_clut_buf[L2NCLU];
 
-lcd_settings my_settings = {
+static lcd_settings my_settings = {
     .bg_pixel = 0xFF7F007F,
     .layer1 = {
         .is_enabled = true,

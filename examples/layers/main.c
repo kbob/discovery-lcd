@@ -7,7 +7,7 @@
 #define MY_CLOCKS (rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ])
 #define MY_SCREEN adafruit_p1596_lcd
 
-#define L1PF rgba4444
+#define L1PF argb4444
 #define L1H 100
 #define L1W 100
 
@@ -15,10 +15,10 @@
 #define L2H 200
 #define L2W 128
 
-L1PF layer1_buffer[L1H][L1W] SDRAM_BANK_0;
-L2PF layer2_buffer[L2H][L2W] SDRAM_BANK_2;
+static L1PF layer1_buffer[L1H][L1W] SDRAM_BANK_0;
+static L2PF layer2_buffer[L2H][L2W] SDRAM_BANK_2;
 
-lcd_settings my_settings = {
+static lcd_settings my_settings = {
     .bg_pixel = 0xFFFF0000,
     .layer1 = {
         .is_enabled = true,
@@ -66,26 +66,6 @@ static void draw_layer_2(void)
             layer2_buffer[y][x] = y >> 4 << 4 | x >> 4;
 }
 
-static void fade_in_LCD(void)
-{
-    static bool done;
-    if (done)
-        return;
-    uint32_t now = system_millis;
-    static uint32_t t0;
-    if (!t0) {
-        t0 = now + 1;
-        return;
-    }
-    uint32_t b0 = (now - t0);
-    uint32_t b1 = b0 * (b0 + 1) >> 5;
-    if (b1 > 65535) {
-        b1 = 65535;
-        done = true;
-    }
-    lcd_pwm_set_brightness(b1);
-}
-
 int main(void)
 {
     init_clocks(&MY_CLOCKS);
@@ -97,7 +77,7 @@ int main(void)
     draw_layer_1();
     draw_layer_2();
     lcd_load_settings(&my_settings, false);
-    while (1) {
-        fade_in_LCD();
-    }
+    lcd_fade(0, 65535, 0, 2000);
+    while (1)
+        continue;
 }

@@ -1,4 +1,5 @@
 #include "clock.h"
+#include "intr.h"
 #include "lcd.h"
 #include "lcd-pwm.h"
 #include "sdram.h"
@@ -7,18 +8,18 @@
 #define MY_CLOCKS (rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ])
 #define MY_SCREEN adafruit_p1596_lcd
 
-#define L1PF rgba4444
+#define L1PF argb4444
 #define L1H 100
-#define L1W 100
+#define L1W 400
 
 #define L2PF al44
 #define L2H 256
 #define L2W 256
 
-L1PF layer1_buffer[L1H][L1W] SDRAM_BANK_0;
-L2PF layer2_buffer[L2H][L2W] SDRAM_BANK_2;
+static L1PF layer1_buffer[L1H][L1W] SDRAM_BANK_0;
+static L2PF layer2_buffer[L2H][L2W] SDRAM_BANK_2;
 
-lcd_settings my_settings = {
+static lcd_settings my_settings = {
     .bg_pixel = 0xFFFF0000,
     .layer1 = {
         .is_enabled = true,
@@ -52,11 +53,15 @@ lcd_settings my_settings = {
     },
 };
 
+volatile int frame_counter;
+volatile int fps;
+
 static void draw_layer_1(void)
 {
     for (size_t y = 0; y < L1H; y++)
         for (size_t x = 0; x < L1W; x++)
             layer1_buffer[y][x] = ((L1H + x - y) >> 3) & 1 ? 0xF00F : 0x50F0;
+            // layer1_buffer[y][x] = ((L1H + x - y) >> 3) & 1 ? 0xFF0000FF : 0x5500FF00;
 }
 
 static void draw_layer_2(void)
@@ -66,44 +71,46 @@ static void draw_layer_2(void)
             layer2_buffer[y][x] = y >> 4 << 4 | x >> 4;
 }
 
-static void fade_in_LCD(void)
-{
-    static bool done;
-    if (done)
-        return;
-    uint32_t now = system_millis;
-    static uint32_t t0;
-    if (!t0) {
-        t0 = now + 1;
-        return;
-    }
-    uint32_t b0 = (now - t0);
-    uint32_t b1 = b0 * (b0 + 1) >> 5;
-    if (b1 > 65535) {
-        b1 = 65535;
-        done = true;
-    }
-    lcd_pwm_set_brightness(b1);
-}
-
 static lcd_settings *frame_callback(lcd_settings *s)
 {
-    static int l1x_inc = +1;
-    static int l2y_inc = +1;
+    frame_counter++;
+
+    static int l1x_inc = +2;
+    static int l2y_inc = +2;
 
     s->layer1.position.x += l1x_inc;
-    if (s->layer1.position.x >= 800 - 1)
-        l1x_inc = -1;
-    else if (s->layer1.position.x < 2 - L1W)
-        l1x_inc = +1;
+    if (s->layer1.position.x > 800 - 2) {
+        s->layer1.position.x = 800 - 2;
+        l1x_inc *= -1;
+    } else if (s->layer1.position.x < 2 - L1W) {
+        s->layer1.position.x = 2 - L1W;
+        l1x_inc *= -1;
+    }
 
     s->layer2.position.y += l2y_inc;
-    if (s->layer2.position.y >= 480 - 1)
-        l2y_inc = -1;
-    else if (s->layer2.position.y < 2 - L2H)
-        l2y_inc = +1;
+    if (s->layer2.position.y > 480 - 2) {
+        s->layer2.position.y = 480 - 2;
+        l2y_inc *= -1;
+    } else if (s->layer2.position.y < 2 - L2H) {
+        s->layer2.position.y = 2 - L2W;
+        l2y_inc *= -1;
+    }
 
     return s;
+}
+
+static void update_fps(void)
+{
+    static uint32_t next_time;
+    uint32_t now = system_millis;
+    
+    if (now >= next_time) {
+        WITH_INTERRUPTS_MASKED {
+            fps = frame_counter;
+            frame_counter = 0;
+        }
+        next_time += 1000;
+    }
 }
 
 int main(void)
@@ -118,7 +125,7 @@ int main(void)
     draw_layer_2();
     lcd_set_frame_callback(frame_callback);
     lcd_load_settings(&my_settings, false);
-    while (1) {
-        fade_in_LCD();
-    }
+    lcd_fade(0, 65535, 0, 2000);
+    while (1)
+        update_fps();
 }

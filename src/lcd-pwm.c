@@ -63,3 +63,47 @@ void lcd_pwm_set_brightness(uint16_t brightness)
     else
         gpio_clear(DISP_PORT, DISP_PIN);
 }
+
+void lcd_fade(uint16_t level0,
+              uint16_t level1,
+              uint32_t delay_msec,
+              uint32_t duration_msec)
+{
+    // config params;
+    uint32_t now = system_millis;
+    fader.l0 = level0;
+    fader.l1 = level1;
+    fader.t0 = now + delay_msec;
+    fader.t1 = now + delay_msec + duration_msec;
+
+    // enable timer interrupt
+    nvic_enable_irq(NVIC_TIM1_UP_TIM10_IRQ);
+    timer_enable_irq(TIM10, TIM_DIER_UIE);
+}
+
+void tim1_up_tim10_isr(void)
+{
+    // get the time.
+    uint32_t now = system_millis;
+    int32_t dt = now - fader.t0;
+    uint32_t dur = fader.t1 - fader.t0;
+    if (dt > (int32_t)dur)
+        dt = dur;                // if dur == 0, use final value
+    else if (dt < 0)
+        dt = 0;
+
+    // lerp the brightness
+    uint32_t l0 = fader.l0;
+    uint32_t l1 = fader.l1;
+    uint32_t base = l0;
+    int32_t delta = (int32_t)l1 - (int32_t)l0;
+    uint32_t bright = base + (delta * dt) / dur;
+
+    // square for smoother ramping
+    bright = (bright * bright) >> 16;
+    lcd_pwm_set_brightness(bright);
+
+    // stop interrupt if done.
+    if (dt == (int32_t)dur)
+        timer_disable_irq(TIM10, TIM_DIER_UIE);
+}
