@@ -41,7 +41,7 @@ static void init_bitrev(void)
 }
 
 static lcd_settings my_settings = {
-    .bg_pixel = 0xFFFFFFFF,
+    .bg_pixel = 0xFF000000,
     .layer1 = {
         .is_enabled = true,
         .uses_pixel_alpha = true,
@@ -113,20 +113,21 @@ static void init_layer1_clut(void)
     // for (size_t i = 0; i < 512; i++)
     //     layer1_clut_buf[i] = i % 256 << 16;
     for (size_t i = 0; i < 256; i++)
-        layer1_clut_buf[i] = i & 0x20 ? (i & 0x60) << 16 : 0;
+        layer1_clut_buf[i] = i & 0x20 ? (i & 0x60) << 16 | 0x000033 : 0;
 #if 0
     for (size_t i = 256; i < 512; i++) {
         uint8_t c = bit_reverse[i % 256];
         layer1_clut_buf[i] = c << 16 | abs(64 - c) << 0;
     }
-    for (size_t i = 512; i < 768; i++)
-        layer1_clut_buf[i] = i & 1 ? (i % 256) << 16 : 0;
-#else
+#elif 0
     for (size_t i = 256; i < 512; i++)
         layer1_clut_buf[i] = (i % 256) << 16;
+#else
+    for (size_t i = 256; i < 512; i++)
+        layer1_clut_buf[i] = (i % 256) << 8 | (i % 256);
+#endif
     for (size_t i = 512; i < 768; i++)
         layer1_clut_buf[i] = layer1_clut_buf[i - 512];
-#endif
 }
 
 static void init_layer2_clut(void)
