@@ -267,13 +267,13 @@ static void lcd_load_layer_settings(int layer, const lcd_layer_settings *ls)
             if (clut_count == 256) {
                 for (size_t i = 0; i < clut_count; i++)
                     LTDC_LxCLUTWR(layer) =
-                        i << 24 | ((*ls->clut).c256[i] & 0x00FFFFFF);
+                        i << 24 | ls->clut[i] & 0x00FFFFFF;
             } else if (clut_count == 16) {
-                // For 4 bit clut, load entries 0x00, 0x11, 0x22, etc.
+                // For 16 entry CLUT, load entries 0x00, 0x11, 0x22, etc.
                 for (size_t i = 0; i < clut_count; i++) {
                     uint32_t clutadd = i << 24 | i << 28;
                     LTDC_LxCLUTWR(layer) =
-                        clutadd | ((*ls->clut).c256[i] & 0x00FFFFFF);
+                        clutadd | ls->clut[i] & 0x00FFFFFF;
                 }
             }
         }
@@ -436,7 +436,7 @@ void lcd_tft_isr(void)
                 LTDC_ICR_CTERRIF |
                 LTDC_ICR_CFUIF   |
                 LTDC_ICR_CLIF);
-    // assert(!(isr & (LTDC_ISR_TERRIF | LTDC_ISR_FUIF)));
+    assert(!(isr & (LTDC_ISR_TERRIF | LTDC_ISR_FUIF)));
     if ((isr & LTDC_ISR_LIF) && line_callback) {
         lcd_settings *new_settings = (*line_callback)(&current_settings);
         if (new_settings) {

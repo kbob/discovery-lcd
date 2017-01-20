@@ -48,11 +48,6 @@ extern "C" {
     typedef xrgb_888 lcd_clut16[16];
     typedef xrgb_888 lcd_clut256[256];
 
-    typedef union lcd_clut {
-        lcd_clut16  c16;
-        lcd_clut256 c256;
-    } lcd_clut;
-
     typedef struct lcd_layer_settings {
         bool      is_enabled;
         bool      uses_pixel_alpha;
@@ -63,14 +58,7 @@ extern "C" {
         uint8_t   alpha;
         ipoint    position;
         pixmap    pixels;
-    #if 1
-        lcd_clut *clut;         // NULL for no CLUT
-    #else
-        union {
-            lcd_clut16 *clut16;
-            lcd_clut256 *clut256;
-        };
-    #endif
+        xrgb_888 *clut;
     } lcd_layer_settings;
 
     // The settings may change for every video frame.

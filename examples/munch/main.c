@@ -56,7 +56,7 @@ static lcd_settings my_settings = {
             .h = L1H,
             .pixels = layer1_pixel_buf,
         },
-        .clut = (lcd_clut *)layer1_clut_buf,
+        .clut = layer1_clut_buf,
     },
     .layer2 = {
         .is_enabled = true,
@@ -72,7 +72,7 @@ static lcd_settings my_settings = {
             .h = L2H,
             .pixels = layer2_pixel_buf,
         },
-        .clut = (lcd_clut *)layer2_clut_buf,
+        .clut = layer2_clut_buf,
     },
 };
 
@@ -249,11 +249,11 @@ static lcd_settings *frame_callback(lcd_settings *s)
     }
     s->layer2.position.y = y2;
 
-    s->layer1.clut = (lcd_clut *)(layer1_clut_buf + l1c_index);
+    s->layer1.clut = layer1_clut_buf + l1c_index;
     l1c_index++;
     l1c_index %= 512;
 
-    s->layer2.clut = (lcd_clut *)(layer2_clut_buf + l2c_index);
+    s->layer2.clut = layer2_clut_buf + l2c_index;
     l2c_index += 3;
     l2c_index %= 512;
 

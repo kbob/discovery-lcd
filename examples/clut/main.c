@@ -45,7 +45,7 @@ static lcd_settings my_settings = {
             .h = L1H,
             .pixels = layer1_pixel_buf,
         },
-        .clut = (lcd_clut *)layer1_clut,
+        .clut = layer1_clut,
     },
     .layer2 = {
         .is_enabled = true,
@@ -60,7 +60,7 @@ static lcd_settings my_settings = {
             .h = L2H,
             .pixels = layer2_pixel_buf,
         },
-        .clut = (lcd_clut *)layer2_clut_buf,
+        .clut = layer2_clut_buf,
     },
 };
 
@@ -105,38 +105,23 @@ static void init_layer_1_clut(void)
 static void init_layer_2_clut(void)
 {
     for (size_t i = 0; i < L2NCOLOR; i++) {
-        uint32_t inc = (i % 64) << 2, high = 0xFF, dec = high - inc;
+        uint32_t inc = (i % 128) << 1, dec = 0xFF - inc;
         uint32_t r = 0, g = 0, b = 0;
-        switch (i / 64) {
+        switch (i / 128) {
 
         case 0:
-            r = 0xFF;
+            r = dec;
             g = inc;
             break;
 
         case 1:
-            r = dec;
-            g = 0xFF;
-            break;
-
-        case 2:
-            g = 0xFF;
+            g = dec;
             b = inc;
             break;
 
-        case 3:
-            g = dec;
-            b = 0xFF;
-            break;
-
-        case 4:
-            b = 0xFF;
-            r = inc;
-            break;
-
-        case 5:
+        case 2:
             b = dec;
-            r = high;
+            r = inc;
             break;
         }
         layer2_clut_buf[i] = r << 16 | g << 8 | b << 0;
@@ -178,7 +163,7 @@ static lcd_settings *frame_callback(lcd_settings *s)
 
     static uint32_t l2_clut_rotor;
     l2_clut_rotor = (l2_clut_rotor + 1) % L2NCOLOR;
-    s->layer2.clut = (lcd_clut *)(layer2_clut_buf + l2_clut_rotor);
+    s->layer2.clut = layer2_clut_buf + l2_clut_rotor;
 
     return s;
 }

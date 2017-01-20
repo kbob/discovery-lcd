@@ -13,7 +13,7 @@
 
 #define L2PF al44
 #define L2H 200
-#define L2W 128
+#define L2W 200
 
 static L1PF layer1_buffer[L1H][L1W] SDRAM_BANK_0;
 static L2PF layer2_buffer[L2H][L2W] SDRAM_BANK_2;
