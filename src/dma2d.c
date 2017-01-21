@@ -114,20 +114,41 @@ static void start_solid_request(dma2d_request *req)
 {
     assert(req->type == DRT_SOLID);
 
-    DMA2D_OPFCCR = dma2d_dest_color_mode(req->dest.format);
-    DMA2D_OCOLR  = req->solid.color;
-    DMA2D_OMAR   = (uint32_t)req->dest.pixels;
-    DMA2D_OOR    = pixmap_pixel_pitch(&req->dest) - req->dest.w;
-    DMA2D_NLR    = (req->dest.w << DMA2D_NLR_PL_SHIFT |
-                    req->dest.h << DMA2D_NLR_NL_SHIFT);
+    DMA2D_OPFCCR  = dma2d_dest_color_mode(req->dest.format);
+    DMA2D_OCOLR   = req->solid.color;
+    DMA2D_OMAR    = (uint32_t)req->dest.pixels;
+    DMA2D_OOR     = pixmap_pixel_pitch(&req->dest) - req->dest.w;
+    DMA2D_NLR     = (req->dest.w << DMA2D_NLR_PL_SHIFT |
+                     req->dest.h << DMA2D_NLR_NL_SHIFT);
 
-    DMA2D_IFCR   = DMA2D_IFCR_CCEIF | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
+    DMA2D_IFCR    = DMA2D_IFCR_CCEIF | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
 
-    DMA2D_CR     = (DMA2D_CR_MODE_R2M << DMA2D_CR_MODE_SHIFT |
-                    DMA2D_CR_CEIE |
-                    DMA2D_CR_TCIE |
-                    DMA2D_CR_TEIE |
-                    DMA2D_CR_START);
+    DMA2D_CR      = (DMA2D_CR_MODE_R2M << DMA2D_CR_MODE_SHIFT |
+                     DMA2D_CR_CEIE |
+                     DMA2D_CR_TCIE |
+                     DMA2D_CR_TEIE |
+                     DMA2D_CR_START);
+}
+
+static void start_copy_request(dma2d_request *req)
+{
+    assert(req->type == DRT_COPY);
+
+    DMA2D_FGMAR   = (uint32_t)req->copy.src.pixels;
+    DMA2D_FGOR    = pixmap_pixel_pitch(&req->copy.src) - req->copy.src.w;
+    DMA2D_FGPFCCR = dma2d_dest_color_mode(req->dest.format);
+    DMA2D_OMAR    = (uint32_t)req->dest.pixels;
+    DMA2D_OOR     = pixmap_pixel_pitch(&req->dest) - req->dest.w;
+    DMA2D_NLR     = (req->dest.w << DMA2D_NLR_PL_SHIFT |
+                     req->dest.h << DMA2D_NLR_NL_SHIFT);
+
+    DMA2D_IFCR    = DMA2D_IFCR_CCEIF | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
+
+    DMA2D_CR      = (DMA2D_CR_MODE_M2M << DMA2D_CR_MODE_SHIFT |
+                     DMA2D_CR_CEIE |
+                     DMA2D_CR_TCIE |
+                     DMA2D_CR_TEIE |
+                     DMA2D_CR_START);
 }
 
 static void start_request(void)
@@ -144,7 +165,7 @@ static void start_request(void)
         break;
 
     case DRT_COPY:
-        // start_copy_request(req);
+        start_copy_request(req);
         break;
 
     case DRT_PFC:

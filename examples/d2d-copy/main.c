@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "clock.h"
 #include "dma2d.h"
 #include "lcd.h"
@@ -44,27 +46,31 @@ static void draw_layer_1(void)
             layer1_pixel_buf[y][x] = (rgb888) { 0x7f, 0x7f, 0x7f };
 }
 
-static void draw_solid(void)
+static void draw_image(void)
 {
-    static int rowcol;
-    static int color;
-    static const uint32_t colors[] = {
-        0x004aff,
-        0x95ff00,
-        0xff00df,
-        0x00ffd4,
-        0xff8a00,
-        0x4000ff,
-        0x0bff00,
-        0xff0055,
-        0x00a0ff,
-        0xeaff00,
-        0xca00ff,
-        0x00ff7f,
-        0xff3500,
-        0x0016ff,
-        // 0x60ff00,
+    static const L1PF colors[] = {
+        { 0xff, 0x4a, 0x00 },
+        { 0x00, 0xff, 0x95 },
+        { 0xdf, 0x00, 0xff },
+        { 0xd4, 0xff, 0x00 },
+        { 0x00, 0x8a, 0xff },
+        { 0xff, 0x00, 0x40 },
+        { 0x00, 0xff, 0x0b },
+        { 0x55, 0x00, 0xff },
+        { 0xff, 0xa0, 0x00 },
+        { 0x00, 0xff, 0xea },
+        { 0xff, 0x00, 0xca },
+        { 0x7f, 0xff, 0x00 },
+        { 0x00, 0x35, 0xff },
+        { 0xff, 0x16, 0x00 },
+        // { 0x00, 0xff, 0x60 },
     };
+    static const size_t nc = (&colors)[1] - colors;
+    static L1PF images[2][100][100] __attribute__((section(".system_ram")));
+    static L1PF (*image)[100] = images[0];
+    static int rowcol;
+    static int cix;
+
     int row = rowcol / 5;
     int col = rowcol % 5;
 
@@ -77,10 +83,42 @@ static void draw_solid(void)
                                        88 + 132 * col,
                                        60 + 132 * row),
     };
-    dma2d_enqueue_solid_request(&dest, 0xFF000000 | colors[color], NULL);
+    pixmap src = {
+        .pitch = sizeof image[0],
+        .format = my_settings.layer1.pixels.format,
+        .w = 100,
+        .h = 100,
+        .pixels = image,
+    };
+    dma2d_enqueue_copy_request(&dest, &src, NULL);
+    image = image == images[0] ? images[1] : images[0];
+
+    L1PF c0 = colors[(cix + 0) % nc];
+    L1PF c1 = colors[(cix + 1) % nc];
+    L1PF c2 = colors[(cix + 2) % nc];
+    L1PF c3 = colors[(cix + 3) % nc];
+
+    for (int y = 0; y < 50; y++) {
+        int x = 0;
+        for ( ; x < y; x++)
+            image[y][x] = c0;
+        for ( ; x < 100 - y; x++)
+            image[y][x] = c1;
+        for ( ; x < 100; x++)
+            image[y][x] = c3;
+    }
+    for (int y = 50; y < 100; y++) {
+        int x = 0;
+        for ( ; x < 100 - y; x++)
+            image[y][x] = c0;
+        for ( ; x < y; x++)
+            image[y][x] = c2;
+        for ( ; x < 100; x++)
+            image[y][x] = c3;
+    }
 
     rowcol = (rowcol + 1) % (3 * 5);
-    color = (color + 1) % ((&colors)[1] - colors);
+    cix = (cix + 4) % nc;
 }
 
 static lcd_settings *frame_callback(lcd_settings *s)
@@ -107,7 +145,7 @@ int main(void)
     while (1) {
         if (fc + 2 < frame_count) {
             fc = frame_count;
-            draw_solid();
+            draw_image();
         }
     }
 }
