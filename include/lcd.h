@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "pixfmts.h"
+#include "pixmap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,13 +37,6 @@ extern "C" {
     typedef struct ipoint {
         int       x, y;
     } ipoint;
-
-    typedef struct pixmap {
-        ssize_t   pitch;        // row pitch in bytes
-        pixfmt    format;
-        size_t    w, h;
-        void     *pixels;
-    } pixmap;
 
     typedef xrgb_888 lcd_clut16[16];
     typedef xrgb_888 lcd_clut256[256];

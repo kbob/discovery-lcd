@@ -15,6 +15,9 @@ extern "C" {
         PF_L8,
         PF_AL44,
         PF_AL88,
+        PF_L4,
+        PF_A8,
+        PF_A4,
         PF_COUNT                // must be last
     } pixfmt;
 

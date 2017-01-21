@@ -171,7 +171,7 @@ static size_t pixfmt_size_bytes(pixfmt f)
         return 2;
 
     default:
-        assert(0);
+        assert(false);
     }
 }
 
@@ -187,6 +187,12 @@ static size_t pixfmt_clut_size(pixfmt f)
 
     case PF_AL88:
         return 256;
+
+    // case PF_A8:
+    //     return 256;
+
+    // case PF_A4:
+    //     return 16;
 
     default:
         return 0;

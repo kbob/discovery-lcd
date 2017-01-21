@@ -94,6 +94,12 @@ void lcd_fade(uint16_t level0,
 
 void tim1_up_tim10_isr(void)
 {
+    // clear the interrupt.
+    bool uif = timer_get_flag(TIM10, TIM_SR_UIF);
+    timer_clear_flag(TIM10, TIM_SR_UIF);
+    if (!uif)
+        return;
+
     // get the time.
     uint32_t now = system_millis;
     int32_t dt = now - fader.t0;
