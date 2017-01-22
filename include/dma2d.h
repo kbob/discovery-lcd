@@ -38,7 +38,6 @@ extern "C" {
     typedef struct dma2d_pfc_req { // pixel format conversion
         pixmap              src;
         xrgb_888            src_color;
-        bool                src_uses_clut;
         dma2d_alpha_mode    src_alpha_mode;
         uint8_t             src_alpha;
     } dma2d_pfc_req;
@@ -48,8 +47,6 @@ extern "C" {
         pixmap              bg;
         xrgb_888            fg_color;
         xrgb_888            bg_color;
-        bool                fg_uses_clut: 1;
-        bool                bg_uses_clut: 1;
         dma2d_alpha_mode    fg_alpha_mode: 2;
         dma2d_alpha_mode    bg_alpha_mode: 2;
         uint8_t             fg_alpha;
@@ -106,7 +103,6 @@ extern "C" {
     extern void dma2d_enqueue_pfc_request(pixmap *dest,
                                           pixmap *src,
                                           xrgb_888 src_color,
-                                          bool src_uses_clut,
                                           dma2d_alpha_mode src_alpha_mode,
                                           uint8_t src_alpha,
                                           dma2d_callback *);
@@ -119,8 +115,6 @@ extern "C" {
                                            pixmap *bg,
                                            xrgb_888 fg_color,
                                            xrgb_888 bg_color,
-                                           bool fg_uses_clut,
-                                           bool bg_uses_clut,
                                            dma2d_alpha_mode fg_alpha_mode,
                                            dma2d_alpha_mode bg_alpha_mode,
                                            uint8_t fg_alpha,

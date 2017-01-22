@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "clock.h"
 #include "dma2d.h"
 #include "lcd.h"

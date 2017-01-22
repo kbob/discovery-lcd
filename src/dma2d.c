@@ -13,6 +13,8 @@ static volatile size_t rq_size;
 static volatile size_t rq_head;
 static volatile size_t rq_tail;
 static volatile bool dma_busy;
+static uint32_t fg_clut_size;
+static uint32_t fg_clut_mode;
 
 #define CHECK_DEST_FORMAT(dst)                                          \
     (assert(dest->format == PF_ARGB8888 ||                              \
@@ -86,24 +88,84 @@ static dma2d_request *dequeue_request(void)
     return req;
 }
 
+static uint32_t dma2d_src_color_mode(pixfmt format)
+{
+    switch (format) {
+
+    case PF_ARGB8888:
+        return DMA2D_xPFCCR_CM_ARGB8888;
+
+    case PF_RGB888:
+        return DMA2D_xPFCCR_CM_RGB888;
+
+    case PF_RGB565:
+        return DMA2D_xPFCCR_CM_RGB565;
+
+    case PF_ARGB1555:
+        return DMA2D_xPFCCR_CM_ARGB1555;
+
+    case PF_ARGB4444:
+        return DMA2D_xPFCCR_CM_ARGB4444;
+
+    case PF_L8:
+        return DMA2D_xPFCCR_CM_L8;
+
+    case PF_AL44:
+        return DMA2D_xPFCCR_CM_AL44;
+
+    case PF_AL88:
+        return DMA2D_xPFCCR_CM_AL88;
+
+    case PF_L4:
+        return DMA2D_xPFCCR_CM_L4;
+
+    case PF_A8:
+        return DMA2D_xPFCCR_CM_A8;
+
+    case PF_A4:
+        return DMA2D_xPFCCR_CM_A4;
+
+    default:
+        assert(false);
+    }
+}
+
 static uint32_t dma2d_dest_color_mode(pixfmt format)
 {
     switch (format) {
 
     case PF_ARGB8888:
-        return 0b000 << DMA2D_OPFCCR_CM_SHIFT;
+        return DMA2D_OPFCCR_CM_ARGB8888;
 
     case PF_RGB888:
-        return 0b001 << DMA2D_OPFCCR_CM_SHIFT;
+        return DMA2D_OPFCCR_CM_RGB888;
 
     case PF_RGB565:
-        return 0b010 << DMA2D_OPFCCR_CM_SHIFT;
+        return DMA2D_OPFCCR_CM_RGB565;
 
     case PF_ARGB1555:
-        return 0b011 << DMA2D_OPFCCR_CM_SHIFT;
+        return 0b011;           // missing macro
 
     case PF_ARGB4444:
-        return 0b100 << DMA2D_OPFCCR_CM_SHIFT;
+        return 0b100;           // incorrect macro
+
+    default:
+        assert(false);
+    }
+}
+
+static uint32_t dma2d_pfc_alpha_mode(dma2d_alpha_mode mode)
+{
+    switch (mode) {
+
+    case DAM_SRC:
+        return DMA2D_xPFCCR_AM_NONE;
+
+    case DAM_REQ:
+        return DMA2D_xPFCCR_AM_FORCE;
+
+    case DAM_PRODUCT:
+        return DMA2D_xPFCCR_AM_PRODUCT;
 
     default:
         assert(false);
@@ -114,7 +176,8 @@ static void start_solid_request(dma2d_request *req)
 {
     assert(req->type == DRT_SOLID);
 
-    DMA2D_OPFCCR  = dma2d_dest_color_mode(req->dest.format);
+    uint32_t cm = dma2d_dest_color_mode(req->dest.format);
+    DMA2D_OPFCCR  = cm << DMA2D_OPFCCR_CM_SHIFT;
     DMA2D_OCOLR   = req->solid.color;
     DMA2D_OMAR    = (uint32_t)req->dest.pixels;
     DMA2D_OOR     = pixmap_pixel_pitch(&req->dest) - req->dest.w;
@@ -136,7 +199,8 @@ static void start_copy_request(dma2d_request *req)
 
     DMA2D_FGMAR   = (uint32_t)req->copy.src.pixels;
     DMA2D_FGOR    = pixmap_pixel_pitch(&req->copy.src) - req->copy.src.w;
-    DMA2D_FGPFCCR = dma2d_dest_color_mode(req->dest.format);
+    uint32_t cm = dma2d_dest_color_mode(req->dest.format);
+    DMA2D_FGPFCCR = cm << DMA2D_xPFCCR_CM_SHIFT;
     DMA2D_OMAR    = (uint32_t)req->dest.pixels;
     DMA2D_OOR     = pixmap_pixel_pitch(&req->dest) - req->dest.w;
     DMA2D_NLR     = (req->dest.w << DMA2D_NLR_PL_SHIFT |
@@ -145,6 +209,40 @@ static void start_copy_request(dma2d_request *req)
     DMA2D_IFCR    = DMA2D_IFCR_CCEIF | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
 
     DMA2D_CR      = (DMA2D_CR_MODE_M2M << DMA2D_CR_MODE_SHIFT |
+                     DMA2D_CR_CEIE |
+                     DMA2D_CR_TCIE |
+                     DMA2D_CR_TEIE |
+                     DMA2D_CR_START);
+}
+
+static void start_pfc_request(dma2d_request *req)
+{
+    assert(req->type == DRT_PFC);
+
+    DMA2D_FGMAR   = (uint32_t)req->pfc.src.pixels;
+    DMA2D_FGOR    = pixmap_pixel_pitch(&req->pfc.src) - req->pfc.src.w;
+
+    uint32_t alpha = req->pfc.src_alpha;
+    uint32_t am = dma2d_pfc_alpha_mode(req->pfc.src_alpha_mode);
+    uint32_t cs = fg_clut_size;
+    uint32_t ccm = fg_clut_mode;
+    uint32_t cm = dma2d_src_color_mode(req->pfc.src.format);
+    DMA2D_FGPFCCR = (alpha << DMA2D_xPFCCR_ALPHA_SHIFT |
+                     am    << DMA2D_xPFCCR_AM_SHIFT    |
+                     cs    << DMA2D_xPFCCR_CS_SHIFT    |
+                     ccm                               |
+                     cm    << DMA2D_xPFCCR_CM_SHIFT);
+    DMA2D_FGCOLR  = req->pfc.src_color;
+    cm = dma2d_dest_color_mode(req->dest.format);
+    DMA2D_OPFCCR  = cm << DMA2D_OPFCCR_CM_SHIFT;
+    DMA2D_OMAR    = (uint32_t)req->dest.pixels;
+    DMA2D_OOR     = pixmap_pixel_pitch(&req->dest) - req->dest.w;
+    DMA2D_NLR     = (req->dest.w << DMA2D_NLR_PL_SHIFT |
+                     req->dest.h << DMA2D_NLR_NL_SHIFT);
+
+    DMA2D_IFCR    = DMA2D_IFCR_CCEIF | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
+
+    DMA2D_CR      = (DMA2D_CR_MODE_M2MWPFC << DMA2D_CR_MODE_SHIFT |
                      DMA2D_CR_CEIE |
                      DMA2D_CR_TCIE |
                      DMA2D_CR_TEIE |
@@ -169,7 +267,7 @@ static void start_request(void)
         break;
 
     case DRT_PFC:
-        // start_pfc_request(req);
+        start_pfc_request(req);
         break;
 
     case DRT_BLEND:
@@ -242,7 +340,6 @@ void dma2d_enqueue_copy_request(pixmap *dest,
 void dma2d_enqueue_pfc_request(pixmap *dest,
                                pixmap *src,
                                xrgb_888 src_color,
-                               bool src_uses_clut,
                                dma2d_alpha_mode src_alpha_mode,
                                uint8_t src_alpha,
                                dma2d_callback *cb)
@@ -256,7 +353,6 @@ void dma2d_enqueue_pfc_request(pixmap *dest,
     req->dest               = *dest;
     req->pfc.src            = *src;
     req->pfc.src_color      = src_color;
-    req->pfc.src_uses_clut  = src_uses_clut;
     req->pfc.src_alpha_mode = src_alpha_mode;
     req->pfc.src_alpha      = src_alpha;
 
@@ -268,8 +364,6 @@ void dma2d_enqeue_blend_request(pixmap *dest,
                                 pixmap *bg,
                                 xrgb_888 fg_color,
                                 xrgb_888 bg_color,
-                                bool fg_uses_clut,
-                                bool bg_uses_clut,
                                 dma2d_alpha_mode fg_alpha_mode,
                                 dma2d_alpha_mode bg_alpha_mode,
                                 uint8_t fg_alpha,
@@ -288,8 +382,6 @@ void dma2d_enqeue_blend_request(pixmap *dest,
     req->blend.bg            = *bg;
     req->blend.fg_color      = fg_color;
     req->blend.bg_color      = bg_color;
-    req->blend.fg_uses_clut  = fg_uses_clut;
-    req->blend.bg_uses_clut  = bg_uses_clut;
     req->blend.fg_alpha_mode = fg_alpha_mode;
     req->blend.bg_alpha_mode = bg_alpha_mode;
     req->blend.fg_alpha      = fg_alpha;
