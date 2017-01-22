@@ -24,7 +24,7 @@ extern "C" {
     typedef uint32_t argb8888;
     typedef uint32_t xrgb_888;  // rgb888 padded to 32 bits
     typedef struct rgb888 {
-        uint8_t r, g, b;
+        uint8_t b, g, r;
     } rgb888;
     typedef uint16_t rgb565;
     typedef uint16_t argb1555;

@@ -18,7 +18,7 @@
 #define DMA_REQ_COUNT 10
 
 static L1PF layer1_pixel_buf[L1H][L1W] SDRAM_BANK_0;
-static l8 image_l8[IH][IW] __attribute__((section(".system_ram")));
+static a8 image_a8[IH][IW] __attribute__((section(".system_ram")));
 static rgb565 image_rgb565[IH][IW] __attribute__((section(".system_ram")));
 static dma2d_request dma_requests[DMA_REQ_COUNT];
 static volatile int frame_count;
@@ -59,30 +59,30 @@ static void draw_images(void)
     for (int y = 0; y < 50; y++) {
         int x = 0;
         for ( ; x < y; x++) {
-            image_l8[y][x] = 0x00;
+            image_a8[y][x] = 0x00;
             image_rgb565[y][x] = c0;
         }
         for ( ; x < 100 - y; x++) {
-            image_l8[y][x] = 0x55;
+            image_a8[y][x] = 0x55;
             image_rgb565[y][x] = c1;
         }
         for ( ; x < 100; x++) {
-            image_l8[y][x] = 0xFF;
+            image_a8[y][x] = 0xFF;
             image_rgb565[y][x] = c3;
         }
     }
     for (int y = 50; y < 100; y++) {
         int x = 0;
         for ( ; x < 100 - y; x++) {
-            image_l8[y][x] = 0x00;
+            image_a8[y][x] = 0x00;
             image_rgb565[y][x] = c0;
         }
         for ( ; x < y; x++) {
-            image_l8[y][x] = 0xAA;
+            image_a8[y][x] = 0xAA;
             image_rgb565[y][x] = c2;
         }
         for ( ; x < 100; x++) {
-            image_l8[y][x] = 0xFF;
+            image_a8[y][x] = 0xFF;
             image_rgb565[y][x] = c3;
         }
     }
@@ -129,11 +129,11 @@ static void composite_image(void)
     if (row != 1) {
         // alpha-only source format
         pixmap src = {
-            .pitch = sizeof image_l8[0],
+            .pitch = sizeof image_a8[0],
             .format = PF_A8,
             .w = IW,
             .h = IH,
-            .pixels = image_l8,
+            .pixels = image_a8,
         };
         dma2d_enqueue_pfc_request(&dest, &src,
                                   colors[cix],

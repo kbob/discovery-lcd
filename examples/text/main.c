@@ -8,7 +8,7 @@
 #define MY_CLOCKS (rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ])
 #define MY_SCREEN adafruit_p1596_lcd
 
-#define L1PF rgb565
+#define L1PF rgb888
 #define L1X   0
 #define L1Y   0
 #define L1H 480
@@ -27,7 +27,7 @@ static lcd_settings my_settings = {
         .position = { L1X, L1Y},
         .pixels = {
             .pitch = sizeof *layer1_pixel_buf,
-            .format = PF_RGB565,
+            .format = PF_RGB888,
             .w = L1W,
             .h = L1H,
             .pixels = layer1_pixel_buf,
@@ -41,10 +41,14 @@ static void draw_layer_1(void)
 {
     for (size_t y = 0; y < L1H; y++)
         for (size_t x = 0; x < L1W; x++)
-            layer1_pixel_buf[y][x] = 0x1047;
+            // layer1_pixel_buf[y][x] = 0x1047;
+            // layer1_pixel_buf[y][x] = 0xFF11083a;
+            layer1_pixel_buf[y][x] = (rgb888) { 0x3a, 0x08, 0x11 };
 
     m0r = system_millis;
-    render_text((uint16_t *)*layer1_pixel_buf, L1W, L1H);
+    render_text((uint16_t *)*layer1_pixel_buf,
+                my_settings.layer1.pixels.format,
+                L1W, L1H);
     m1r = system_millis;
 }
 

@@ -8,6 +8,9 @@
 
 extern void init_text(void);
 
-extern void render_text(rgb565 *pixels, size_t width, size_t height);
+extern void render_text(void *pixels,
+                        pixfmt format,
+                        size_t width,
+                        size_t height);
 
 #endif /* !TEXT_included */

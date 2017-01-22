@@ -35,7 +35,10 @@ static const uint32_t message[] = {
 static const char message[] = "Squdgy fez, blank jimp crwth vox! illliill 11111111";
 #endif
 
-static struct FT_MemoryRec_ memory;
+typedef void pixel_render_func(void *data, size_t width,
+                               size_t x, size_t y,
+                               xrgb_888 front, uint8_t alpha);
+
 static FT_Library library;
 static FT_Face face;
 static bool ft_is_initialized;
@@ -48,63 +51,10 @@ extern uint8_t _binary_examples_text_Lato_Light_ttf_size[];
 static const int start_pen_x = 100 << 6;
 static const int start_pen_y = 100 << 6;
 
-volatile struct {
-    uint32_t alloc_blocks;
-    uint32_t alloc_bytes;
-    uint32_t freed_blocks;
-    uint32_t freed_bytes;
-    uint32_t realloc_calls;
-    uint32_t realloc_delta;
-    uint32_t realloc_growth;
-    uint32_t realloc_shrinkage;
-} mem_stats;
-
-static void *my_alloc(FT_Memory mem, long size)
-{
-    (void)mem;
-    mem_stats.alloc_blocks++;
-    mem_stats.alloc_bytes += size;
-    return malloc(size);
-}
-
-static void *my_realloc(FT_Memory mem,
-                        long      cur_size,
-                        long      new_size,
-                        void     *block)
-{
-    (void)mem;
-    (void)cur_size;
-    mem_stats.realloc_calls++;
-    if (new_size > cur_size)
-        mem_stats.realloc_growth += new_size - cur_size;
-    else
-        mem_stats.realloc_shrinkage += cur_size - new_size;
-    mem_stats.realloc_delta += new_size - cur_size;
-    return realloc(block, new_size);
-}
-
-static void my_free(FT_Memory mem, void *block)
-{
-    (void)mem;
-    mem_stats.freed_blocks++;
-    free(block);
-}
-
 void init_text(void)
 {
-#if 0
     FT_Error error = FT_Init_FreeType(&library);
     CHECK(error);
-#else
-    memory.user    = NULL;
-    memory.alloc   = my_alloc;
-    memory.realloc = my_realloc;
-    memory.free    = my_free;
-    FT_Error error = FT_New_Library(&memory, &library);
-    CHECK(error);
-    FT_Add_Default_Modules(library);
-    CHECK(error);
-#endif
     error = FT_New_Memory_Face(library,
                                _binary_examples_text_Lato_Light_ttf_start,
                                (FT_Long)_binary_examples_text_Lato_Light_ttf_size,
@@ -121,7 +71,7 @@ void init_text(void)
     ft_is_initialized = true;
 }
 
-static rgb565 blend_pixel(xrgb_888 front, rgb565 back, uint8_t alpha)
+static rgb565 blend_pixel_rgb565(xrgb_888 front, rgb565 back, uint8_t alpha)
 {
     if (alpha == 0)
         return back;
@@ -141,12 +91,55 @@ static rgb565 blend_pixel(xrgb_888 front, rgb565 back, uint8_t alpha)
     return r >> 3 << 11 | g >> 2 << 5 | b >> 3 << 0;
 }
 
-volatile uint32_t pixel_bytes;
+static rgb888 blend_pixel_rgb888(xrgb_888 front, rgb888 back, uint8_t alpha)
+{
+    if (alpha == 0)
+        return back;
+    uint32_t fr = front >> 16 & 0xFF, fg = front >> 8 & 0xFF, fb = front & 0xFF;
+    if (alpha == 0xFF)
+        return (rgb888) { .r = fr, .g = fg, .b = fb };
+    uint32_t a = alpha, na = 0xFF - alpha;
+    uint32_t r = (a * fr + na * back.r) / 0xFF;
+    uint32_t g = (a * fg + na * back.g) / 0xFF;
+    uint32_t b = (a * fb + na * back.b) / 0xFF;
+    return (rgb888) { .r = r, .g = g, .b = b };
+}
 
-void render_text(rgb565 *data, size_t width, size_t height)
+static void render_pixel_rgb565(void *data, size_t width,
+                                size_t x, size_t y,
+                                xrgb_888 front, uint8_t alpha)
+{
+    rgb565 (*pixels)[width] = (rgb565 (*)[width])data;
+    rgb565 *pix = &pixels[y][x];
+    *pix = blend_pixel_rgb565(front, *pix, alpha);
+}
+
+static void render_pixel_rgb888(void *data, size_t width,
+                                size_t x, size_t y,
+                                xrgb_888 front, uint8_t alpha)
+{
+    rgb888 (*pixels)[width] = (rgb888 (*)[width])data;
+    rgb888 *pix = &pixels[y][x];
+    *pix = blend_pixel_rgb888(front, *pix, alpha);
+}
+
+void render_text(void *data, pixfmt format, size_t width, size_t height)
 {
     (void)height;
-    rgb565 (*pixels)[width] = (rgb565 (*)[width])data;
+    pixel_render_func *render_pixel;
+    switch (format) {
+
+    case PF_RGB888:
+        render_pixel = render_pixel_rgb888;
+        break;
+
+    case PF_RGB565:
+        render_pixel = render_pixel_rgb565;
+        break;
+
+    default:
+        assert(false);
+    }
 
     if (!ft_is_initialized)
         return;
@@ -165,14 +158,18 @@ void render_text(rgb565 *data, size_t width, size_t height)
         CHECK(error);
         error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
         CHECK(error);
-        pixel_bytes += slot->bitmap.width * slot->bitmap.rows;
         for (size_t i = 0; i < slot->bitmap.rows; i++) {
             for (size_t j = 0; j < slot->bitmap.width; j++) {
                 size_t ii = (pen_y >> 6) - slot->bitmap_top + i;
                 size_t jj = (pen_x >> 6) + slot->bitmap_left + j;
+#if 0
                 rgb565 *pix = &pixels[ii][jj];
                 uint8_t alpha = slot->bitmap.buffer[i * slot->bitmap.pitch + j];
                 *pix = blend_pixel(amber, *pix, alpha);
+#else
+                uint8_t alpha = slot->bitmap.buffer[i * slot->bitmap.pitch + j];
+                (*render_pixel)(data, width, jj, ii, amber, alpha);
+#endif
             }
         }
         FT_Vector kerning = { 0, 0 };

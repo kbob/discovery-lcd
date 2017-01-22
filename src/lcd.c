@@ -435,6 +435,8 @@ extern void init_lcd(const lcd_config *cfg)
     LTDC_GCR |= LTDC_GCR_LTDC_ENABLE;
 }
 
+bool lcd_halt_on_error = true;
+
 void lcd_tft_isr(void)
 {
     uint32_t isr = LTDC_ISR;
@@ -442,7 +444,8 @@ void lcd_tft_isr(void)
                 LTDC_ICR_CTERRIF |
                 LTDC_ICR_CFUIF   |
                 LTDC_ICR_CLIF);
-    assert(!(isr & (LTDC_ISR_TERRIF | LTDC_ISR_FUIF)));
+    if (lcd_halt_on_error)
+        assert(!(isr & (LTDC_ISR_TERRIF | LTDC_ISR_FUIF)));
     if ((isr & LTDC_ISR_LIF) && line_callback) {
         lcd_settings *new_settings = (*line_callback)(&current_settings);
         if (new_settings) {
