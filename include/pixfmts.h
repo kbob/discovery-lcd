@@ -30,6 +30,7 @@ extern "C" {
     typedef uint16_t argb1555;
     typedef uint16_t argb4444;
     typedef uint8_t  l8;
+    typedef uint8_t  a8;
     typedef uint8_t  al44;
     typedef uint16_t al88;
 

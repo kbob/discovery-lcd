@@ -13,8 +13,8 @@ static volatile size_t rq_size;
 static volatile size_t rq_head;
 static volatile size_t rq_tail;
 static volatile bool dma_busy;
-static uint32_t fg_clut_size;
-static uint32_t fg_clut_mode;
+static uint32_t fg_clut_size, bg_clut_size;
+static uint32_t fg_clut_mode, bg_clut_mode;
 
 #define CHECK_DEST_FORMAT(dst)                                          \
     (assert(dest->format == PF_ARGB8888 ||                              \
@@ -249,6 +249,55 @@ static void start_pfc_request(dma2d_request *req)
                      DMA2D_CR_START);
 }
 
+static void start_blend_request(dma2d_request *req)
+{
+    assert(req->type == DRT_BLEND);
+
+    DMA2D_FGMAR   = (uint32_t)req->blend.fg.pixels;
+    DMA2D_FGOR    = pixmap_pixel_pitch(&req->blend.fg) - req->blend.fg.w;
+    DMA2D_BGMAR   = (uint32_t)req->blend.bg.pixels;
+    DMA2D_BGOR    = pixmap_pixel_pitch(&req->blend.bg) - req->blend.bg.w;
+
+    uint32_t alpha = req->blend.fg_alpha;
+    uint32_t am = dma2d_pfc_alpha_mode(req->blend.fg_alpha_mode);
+    uint32_t cs = fg_clut_size;
+    uint32_t ccm = fg_clut_mode;
+    uint32_t cm = dma2d_src_color_mode(req->blend.fg.format);
+    DMA2D_FGPFCCR = (alpha << DMA2D_xPFCCR_ALPHA_SHIFT |
+                     am    << DMA2D_xPFCCR_AM_SHIFT    |
+                     cs    << DMA2D_xPFCCR_CS_SHIFT    |
+                     ccm                               |
+                     cm    << DMA2D_xPFCCR_CM_SHIFT);
+    DMA2D_FGCOLR  = req->blend.fg_color;
+
+    alpha = req->blend.bg_alpha;
+    am = dma2d_pfc_alpha_mode(req->blend.bg_alpha_mode);
+    cs = bg_clut_size;
+    ccm = bg_clut_mode;
+    cm = dma2d_src_color_mode(req->blend.bg.format);
+    DMA2D_BGPFCCR = (alpha << DMA2D_xPFCCR_ALPHA_SHIFT |
+                     am    << DMA2D_xPFCCR_AM_SHIFT    |
+                     cs    << DMA2D_xPFCCR_CS_SHIFT    |
+                     ccm                               |
+                     cm    << DMA2D_xPFCCR_CM_SHIFT);
+    DMA2D_BGCOLR  = req->blend.bg_color;
+
+    cm = dma2d_dest_color_mode(req->dest.format);
+    DMA2D_OPFCCR  = cm << DMA2D_OPFCCR_CM_SHIFT;
+    DMA2D_OMAR    = (uint32_t)req->dest.pixels;
+    DMA2D_OOR     = pixmap_pixel_pitch(&req->dest) - req->dest.w;
+    DMA2D_NLR     = (req->dest.w << DMA2D_NLR_PL_SHIFT |
+                     req->dest.h << DMA2D_NLR_NL_SHIFT);
+
+    DMA2D_IFCR    = DMA2D_IFCR_CCEIF | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
+
+    DMA2D_CR      = (DMA2D_CR_MODE_M2MWB << DMA2D_CR_MODE_SHIFT |
+                     DMA2D_CR_CEIE |
+                     DMA2D_CR_TCIE |
+                     DMA2D_CR_TEIE |
+                     DMA2D_CR_START);
+}
+
 static void start_request(void)
 {
     dma2d_request *req;
@@ -271,7 +320,7 @@ static void start_request(void)
         break;
 
     case DRT_BLEND:
-        // start_blend_request(req);
+        start_blend_request(req);
         break;
 
     case DRT_CLUT:
@@ -359,16 +408,16 @@ void dma2d_enqueue_pfc_request(pixmap *dest,
     enqueue_request(req);
 }
 
-void dma2d_enqeue_blend_request(pixmap *dest,
-                                pixmap *fg,
-                                pixmap *bg,
-                                xrgb_888 fg_color,
-                                xrgb_888 bg_color,
-                                dma2d_alpha_mode fg_alpha_mode,
-                                dma2d_alpha_mode bg_alpha_mode,
-                                uint8_t fg_alpha,
-                                uint8_t bg_alpha,
-                                dma2d_callback *cb)
+void dma2d_enqueue_blend_request(pixmap *dest,
+                                 pixmap *fg,
+                                 pixmap *bg,
+                                 xrgb_888 fg_color,
+                                 xrgb_888 bg_color,
+                                 dma2d_alpha_mode fg_alpha_mode,
+                                 dma2d_alpha_mode bg_alpha_mode,
+                                 uint8_t fg_alpha,
+                                 uint8_t bg_alpha,
+                                 dma2d_callback *cb)
 {
     CHECK_DEST_FORMAT(dest);
     CHECK_SRC_FORMAT(fg);

@@ -110,16 +110,16 @@ extern "C" {
     // Blend foreground and background pixmaps; store result
     // in dest using dest's size.  fg and bg alpha values may be
     // modified before blending.
-    extern void dma2d_enqeue_blend_request(pixmap *dest,
-                                           pixmap *fg,
-                                           pixmap *bg,
-                                           xrgb_888 fg_color,
-                                           xrgb_888 bg_color,
-                                           dma2d_alpha_mode fg_alpha_mode,
-                                           dma2d_alpha_mode bg_alpha_mode,
-                                           uint8_t fg_alpha,
-                                           uint8_t bg_alpha,
-                                           dma2d_callback *);
+    extern void dma2d_enqueue_blend_request(pixmap *dest,
+                                            pixmap *fg,
+                                            pixmap *bg,
+                                            xrgb_888 fg_color,
+                                            xrgb_888 bg_color,
+                                            dma2d_alpha_mode fg_alpha_mode,
+                                            dma2d_alpha_mode bg_alpha_mode,
+                                            uint8_t fg_alpha,
+                                            uint8_t bg_alpha,
+                                            dma2d_callback *);
                                            
     // Load fg or bg CLUT.
     extern void dma2d_enqueue_clut_request(bool is_bg,
