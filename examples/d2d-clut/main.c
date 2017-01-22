@@ -155,15 +155,16 @@ static void composite_image(void)
     for (size_t i = 0; i < ICL; i++)
         image_cluts[rowcol][i] = 0xFF000000;
     uint32_t c = colors[cix];
-    image_cluts[rowcol][clut_rotor] = 0xFF000000 | c;
-    c = 3 * ((c & 0xFCFCFC) >> 2) & 0x7F7F7F;
-    image_cluts[rowcol][(clut_rotor +  4) % ICL] = 0xFF000000 | c;
-    c = 3 * ((c & 0xFCFCFC) >> 2) & 0x7F7F7F;
-    image_cluts[rowcol][(clut_rotor +  8) % ICL] = 0xFF000000 | c;
-    c = 3 * ((c & 0xFCFCFC) >> 2) & 0x7F7F7F;
-    image_cluts[rowcol][(clut_rotor + 12) % ICL] = 0xFF000000 | c;
-    c = 3 * ((c & 0xFCFCFC) >> 2) & 0x7F7F7F;
-    image_cluts[rowcol][(clut_rotor + 16) % ICL] = 0xFF000000 | c;
+    for (int i = 0, j = clut_rotor; i < 5; i++, j = (j + 4) % ICL) {
+        image_cluts[rowcol][j] = 0xFF000000 | c;
+        uint32_t r = c >> 16 & 0xFF;
+        uint32_t g = c >>  8 & 0xFF;
+        uint32_t b = c >>  0 & 0xFF;
+        r = r * 5 / 6;
+        g = g * 5 / 6;
+        b = b * 5 / 6;
+        c = r << 16 | g << 8 | b << 0;
+    }
 
     dma2d_enqueue_clut_request(false, true, image_cluts[rowcol], ICL, NULL);
 
