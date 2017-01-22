@@ -56,18 +56,20 @@ static void draw_images(void)
     static rgb565 c2 = 0xf81b;
     static rgb565 c3 = 0x07fa;
 
+    // concentric squares
     for (int y = 0; y < 50; y++) {
         for (int x = 0; x < 50; x++) {
             uint8_t i = (x < y) ? x : y;
-            image_a8[y][x] = (i << 2) & 0xE0;
+            image_a8[y][99 - x] =
+                image_a8[y][x] = (i << 2) & 0xE0;
         }
-        for (int x = 50; x < 100; x++)
-            image_a8[y][x] = image_a8[y][99 - x];
     }
     for (int y = 50; y < 100; y++)
         for (int x = 0; x < 100; x++)
             image_a8[y][x] = image_a8[99 - y][x];
 
+
+    // diagonal triangles
     for (int y = 0; y < 50; y++) {
         int x = 0;
         for ( ; x < y; x++) {

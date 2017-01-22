@@ -15,6 +15,7 @@ static volatile size_t rq_tail;
 static volatile bool dma_busy;
 static uint32_t fg_clut_size, bg_clut_size;
 static uint32_t fg_clut_mode, bg_clut_mode;
+static uint8_t dead_time;
 
 #define CHECK_DEST_FORMAT(dst)                                          \
     (assert(dest->format == PF_ARGB8888 ||                              \
@@ -78,6 +79,11 @@ bool dma2d_is_idle(void)
         busy = dma_busy;
     }
     return !busy;
+}
+
+void dma2d_set_dead_time(uint8_t t)
+{
+    dead_time = t;
 }
 
 static dma2d_request *dequeue_request(void)
@@ -298,12 +304,48 @@ static void start_blend_request(dma2d_request *req)
                      DMA2D_CR_START);
 }
 
+static void start_clut_request(dma2d_request *req)
+{
+    assert(req->type == DRT_CLUT);
+
+    uint32_t cs = req->clut.clut_len << DMA2D_xPFCCR_CS_SHIFT;
+    uint32_t start = DMA2D_xPFCCR_START;
+    uint32_t ccm = (req->clut.has_alpha
+                    ? DMA2D_xPFCCR_CCM_ARGB8888
+                    : DMA2D_xPFCCR_CCM_RGB888);
+    uint32_t pfccr = cs | start | ccm;
+    uint32_t cmar = (uint32_t)req->clut.clut_ptr;
+
+    if (req->clut.is_bg) {
+        DMA2D_BGCMAR = cmar;
+        DMA2D_BGPFCCR = pfccr;
+    } else {
+        DMA2D_FGCMAR = cmar;
+        DMA2D_FGPFCCR = pfccr;
+    }
+
+    DMA2D_IFCR    = (DMA2D_IFCR_CCEIF  |
+                     DMA2D_IFCR_CCTCIF |
+                     DMA2D_IFCR_CCAEIF |
+                     DMA2D_IFCR_CTEIF);
+
+    DMA2D_CR      = (DMA2D_CR_CEIE     |
+                     DMA2D_CR_CTCIE    |
+                     DMA2D_CR_CAEIE    |
+                     DMA2D_CR_TEIE);
+}
+
 static void start_request(void)
 {
     dma2d_request *req;
     WITH_INTERRUPTS_MASKED {
         req = &request_queue[rq_head];
     }
+
+    if (dead_time)
+        DMA2D_AMTCR = dead_time << DMA2D_AMTCR_DT_SHIFT | DMA2D_AMTCR_EN;
+    else
+        DMA2D_AMTCR = 0;
 
     switch (req->type) {
 
@@ -324,7 +366,7 @@ static void start_request(void)
         break;
 
     case DRT_CLUT:
-        // start_clut_request(req);
+        start_clut_request(req);
         break;
     }
 }
@@ -439,6 +481,23 @@ void dma2d_enqueue_blend_request(pixmap *dest,
     enqueue_request(req);
 }
 
+void dma2d_enqueue_clut_request(bool is_bg,
+                                bool has_alpha,
+                                void *clut,
+                                size_t clut_len,
+                                dma2d_callback *cb)
+{
+    dma2d_request *req = alloc_request();
+
+    req->type = DRT_CLUT;
+    req->callback = cb;
+    req->clut.is_bg     = is_bg;
+    req->clut.has_alpha = has_alpha;
+    req->clut.clut_len  = clut_len;
+    req->clut.clut_ptr  = clut;
+
+    enqueue_request(req);
+}
 
 void dma2d_isr(void)
 {

@@ -53,15 +53,12 @@ extern "C" {
         uint8_t             bg_alpha;
     } dma2d_blend_req;
 
-    typedef struct dma2d_load_clut_req {
+    typedef struct dma2d_clut_req {
         bool                is_bg;
         bool                has_alpha;
         uint8_t             clut_len;
-        union {
-            rgb888         *clut_rgb;
-            argb8888       *clut_argb;
-        };
-    } dma2d_load_clut_req;
+        void               *clut_ptr;
+    } dma2d_clut_req;
 
     typedef void dma2d_callback(dma2d_request *);
 
@@ -74,6 +71,7 @@ extern "C" {
             dma2d_copy_req  copy;
             dma2d_pfc_req   pfc;
             dma2d_blend_req blend;
+            dma2d_clut_req  clut;
         };
     };
 
@@ -84,6 +82,9 @@ extern "C" {
     extern bool dma2d_queue_is_full(void);
     extern bool dma2d_queue_is_empty(void);
     extern bool dma2d_is_idle(void);
+
+    // Delay t AHB clocks between consecutive AHB accesses.
+    extern void dma2d_set_dead_time(uint8_t t);
 
     // Fill destination pixmap with a single pixel value.
     // Pixel value should match destination pixmap's format.
