@@ -23,7 +23,8 @@
                     -Iinclude                                           \
                     -I$(OPENCM3_DIR)/include                            \
                     -I$(FREETYPE_DIR)/include                           \
-                    -I$(AGG_DIR)/include
+                    -I$(AGG_DIR)/include                                \
+                    -I$(AGG_DIR)/font_freetype
      TARGET_ARCH := -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
              OPT := -O0
           CFLAGS := -MD -std=gnu99                                      \
