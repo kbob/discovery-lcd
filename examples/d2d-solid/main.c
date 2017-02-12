@@ -19,7 +19,7 @@ static dma2d_request dma_requests[DMA_REQ_COUNT];
 static volatile int frame_count;
 
 static lcd_settings my_settings = {
-    .bg_pixel = 0xFFFF0000,
+    .bg_pixel = 0xFF0000,
     .layer1 = {
         .is_enabled = true,
         .uses_pixel_alpha = true,

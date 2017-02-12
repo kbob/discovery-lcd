@@ -47,7 +47,7 @@ static lcd_settings my_settings;
 
 static void init_lcd_settings(lcd_settings *s)
 {
-    s->bg_pixel = 0xff7f7f7f;
+    s->bg_pixel = 0x7f7f7f;
     s->layer1.is_enabled = true;
     s->layer1.uses_pixel_alpha = false;
     s->layer1.uses_subjacent_alpha = false;

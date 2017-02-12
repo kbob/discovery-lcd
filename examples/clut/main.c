@@ -30,7 +30,7 @@ static lcd_clut16 layer1_clut;
 static xrgb_888 layer2_clut_buf[L2NCLU];
 
 static lcd_settings my_settings = {
-    .bg_pixel = 0xFF7F007F,
+    .bg_pixel = 0x7F007F,
     .layer1 = {
         .is_enabled = true,
         .uses_pixel_alpha = true,

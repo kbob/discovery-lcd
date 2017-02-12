@@ -41,7 +41,7 @@ static void init_bitrev(void)
 }
 
 static lcd_settings my_settings = {
-    .bg_pixel = 0xFF000000,
+    .bg_pixel = 0x000000,
     .layer1 = {
         .is_enabled = true,
         .uses_pixel_alpha = true,

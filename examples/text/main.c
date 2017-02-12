@@ -17,7 +17,7 @@
 static L1PF layer1_pixel_buf[L1H][L1W] SDRAM_BANK_0;
 
 static lcd_settings my_settings = {
-    .bg_pixel = 0xFFFF0000,
+    .bg_pixel = 0xFF0000,
     .layer1 = {
         .is_enabled = true,
         .uses_pixel_alpha = true,

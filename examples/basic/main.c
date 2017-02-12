@@ -7,7 +7,7 @@
 #define MY_SCREEN adafruit_p1596_lcd
 
 static lcd_settings my_settings = {
-    .bg_pixel = 0xFFFF0000,
+    .bg_pixel = 0xFF0000,
 };
 
 int main(void)
