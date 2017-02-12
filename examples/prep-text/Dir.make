@@ -11,7 +11,7 @@
        PIXMAPS := $(patsubst %,%-pixmap.inc, fhpn)
     $D_PIXMAPS := $(PIXMAPS:%=$D/%)
    TEXT_STRING := "Hello, World!"
-spitmap_CCFILES := spitmap.cc freetype.cc agg.cc unicode.cc
+spitmap_CCFILES := spitmap.cc freetype.cc agg.cc graymap.cc unicode.cc output.cc
 $D/spitmap_CCFILES := $(spitmap_CCFILES:%=$D/%)
 $D/spitmap_OFILES := $($D/spitmap_CCFILES:%.cc=%.o)
 
@@ -28,10 +28,9 @@ $($D_ELF): $($D_OFILES) $(LIBGFX)
 $D/main.o: $($D_PIXMAPS)
 
 $D/fhpn-pixmap.inc: $D/spitmap
-	$D/spitmap --font=Lato-Light fhpn $(TEXT_STRING)
+	$D/spitmap -o $@ --font=Lato-Light fhpn $(TEXT_STRING)
 
 $D/spitmap:          CC := $(HOSTCXX)
-$D/spitmap:      CFLAGS += -Wno-bitwise-op-parentheses
 $D/spitmap:     LDFLAGS :=
 $D/spitmap:      LDLIBS :=
 $D/spitmap:     LDFLAGS += -L/opt/local/lib
@@ -47,4 +46,5 @@ $($D/spitmap_OFILES):    CPPFLAGS := -I$(AGG_DIR)/include
 $($D/spitmap_OFILES):    CPPFLAGS += -I$(AGG_DIR)/font_freetype
 $($D/spitmap_OFILES):    CPPFLAGS += -I/opt/local/include/freetype2
 $($D/spitmap_OFILES): TARGET_ARCH :=
-$($D/spitmap_OFILES):    CXXFLAGS := -MD -g 
+$($D/spitmap_OFILES):    CXXFLAGS := -MD -g -Wall -Werror
+$($D/spitmap_OFILES):    CXXFLAGS += -Wno-bitwise-op-parentheses

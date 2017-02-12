@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "graymap.h"
+
 typedef enum visual {
     V_ARGB8888,
     V_RGB888,
@@ -34,13 +36,14 @@ struct options {
     visual      visual;
     const char *identifier;
     const char *text;
+    const char *out_file;
 
     options();
 };
 
 extern const char *progname;
 
-extern void render_freetype(const options *);
-extern void render_agg(const options *);
+extern graymap *render_freetype(const options *);
+extern graymap *render_agg(const options *);
 
 #endif /* !SPITMAP_included */

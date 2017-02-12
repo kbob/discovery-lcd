@@ -1,5 +1,6 @@
 #include "spitmap.h"
 
-void render_agg(const options *)
+graymap *render_agg(const options *)
 {
+    return 0;
 }

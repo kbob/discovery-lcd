@@ -106,7 +106,6 @@ public:
         if (!m_is_aligned) {
             FT_Vector translation = { m_pen_x & 0x3F, m_pen_y & 0x3F };
             FT_Set_Transform(m_face, NULL, &translation);
-            CHECK(error);
         }
         error = FT_Load_Glyph(m_face, m_glyph_index, FT_LOAD_DEFAULT);
         CHECK(error);
@@ -126,8 +125,8 @@ private:
     }
 
     FT_Face    m_face;
-    bool       m_is_hinting;
     bool       m_is_aligned;
+    bool       m_is_hinting;
     uint8_t   *m_str;
     FT_UInt    m_glyph_index;
     FT_UInt    m_prev_gl_idx;
@@ -145,7 +144,10 @@ static string_metrics collect_metrics(FT_Face face, const options *opts)
 
     for (string_glyph_iterator it(face, opts); it; ++it) {
         FT_GlyphSlot slot = *it;
-        double width = (it.pen_x() + slot->metrics.width) / 64.0;
+        double width = ceil((it.pen_x() + slot->metrics.width) / 64.0) +
+                       slot->bitmap_left;
+        // printf("width = ceil((%ld + %ld) / 64) + %d = %g\n",
+        //        it.pen_x(), slot->metrics.width, slot->bitmap_left, width);
         double height = face->height / 64.0;
         double ascent = slot->bitmap_top;
         double descent = slot->bitmap.rows - ascent;
@@ -167,89 +169,44 @@ static string_metrics collect_metrics(FT_Face face, const options *opts)
     return metrics;
 }
 
-// static string_metrics XX_collect_metrics(FT_Face face, const options *opts)
-// {
-//     FT_Error error;
-//     string_metrics metrics = {0};
-//     FT_GlyphSlot slot = face->glyph;
-//     int bytes;
-//     FT_UInt prev_glyph_index = 0;
-//     FT_F26Dot6 pen_x = round(opts->translation * 64.0);
-//     FT_F26Dot6 pen_y = 0;
-//     for (const uint8_t *p = (uint8_t *)opts->text; *p; p += bytes) {
-//         uint32_t codepoint;
-//         bytes = decode_utf8_codepoint(p, &codepoint);
-//         assert(bytes > 0);
-//         FT_UInt glyph_index = FT_Get_Char_Index(face, codepoint);
-//         assert(glyph_index);
-//         if (prev_glyph_index) {
-//             FT_Vector kerning;
-//             FT_Kerning_Mode kerning_mode = (opts->is_hinting
-//                                             ? FT_KERNING_DEFAULT
-//                                             : FT_KERNING_UNFITTED);
-//             error = FT_Get_Kerning(face,
-//                                    prev_glyph_index,
-//                                    glyph_index, 
-//                                    kerning_mode,
-//                                    &kerning);
-//             CHECK(error);
-//             pen_x += kerning.x;
-//             pen_y += kerning.y;
-//             prev_glyph_index = glyph_index;
-//         }
-
-//         if (!opts->is_aligned) {
-//             FT_Vector translation = { pen_x & 0x3F, pen_y & 0x3F };
-//             FT_Set_Transform(face, NULL, &translation);
-//             CHECK(error);
-//         }
-//         error = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
-//         CHECK(error);
-//         error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
-//         CHECK(error);
-//         printf("'%c': pen = %g, "
-//                "top = %d, left = %d "
-//                "rows = %d, width = %d\n",
-//                codepoint, pen_x / 64.0,
-//                slot->bitmap_top,
-//                slot->bitmap_left,
-//                slot->bitmap.rows,
-//                slot->bitmap.width);
-
-//         double width = (pen_x + slot->metrics.width) / 64.0;
-//         double height = face->height / 64.0;
-//         double ascent = slot->bitmap_top;
-//         double descent = slot->bitmap.rows - ascent;
-//         if (metrics.width < width)
-//             metrics.width = width;
-//         if (metrics.height < height)
-//             metrics.height = height;
-//         if (metrics.ascent < ascent)
-//             metrics.ascent = ascent;
-//         if (metrics.descent < descent)
-//             metrics.descent = descent;
-//         printf("metrics = {\n");
-//         printf("    .width   = %g,\n", metrics.width);
-//         printf("    .height  = %g,\n", metrics.height);
-//         printf("    .ascent  = %g,\n", metrics.ascent);
-//         printf("    .descent = %g,\n", metrics.descent);
-//         printf("};\n\n");
-
-//         pen_x += slot->advance.x;
-//         pen_y += slot->advance.y;
-//     }
-//     return metrics;
-// }
-
-static void render_face(FT_Face face, const options *opts)
+static void render_string(graymap *pixels,
+                          FT_Face face,
+                          const string_metrics *metrics,
+                          const options *opts)
 {
-    string_metrics metrics = collect_metrics(face, opts);
-    
-    render_string(face, opts);
-    
+    size_t baseline = ceil(metrics->ascent);
+    for (string_glyph_iterator it(face, opts); it; ++it) {
+        FT_GlyphSlot slot = *it;
+        for (size_t i = 0; i < slot->bitmap.rows; i++) {
+            size_t y = i + baseline - slot->bitmap_top;
+            for (size_t j = 0; j < slot->bitmap.width; j++) {
+                size_t x = j + round(it.pen_x() / 64.0) + slot->bitmap_left;
+                // if (x >= pixels->w) {
+                //     printf("(H, W) = (%lu, %lu)\n", pixels->h, pixels->w);
+                //     printf("x = %zu + round(%ld/64) + %d = %zu\n",
+                //            j, it.pen_x(), slot->bitmap_left, x);
+                // }
+                assert(x < pixels->w);
+                assert(y < pixels->h);
+                uint8_t *pix = pixels->pixels + y * pixels->pitch + x;
+                uint8_t alpha = slot->bitmap.buffer[i * slot->bitmap.pitch + j];
+                *pix = alpha;
+            }
+        }
+    }
 }
 
-void render_freetype(const options *opts)
+static graymap *render_face(FT_Face face, const options *opts)
+{
+    string_metrics metrics = collect_metrics(face, opts);
+    size_t width = ceil(metrics.width);
+    size_t height = ceil(metrics.ascent) + ceil(metrics.descent);
+    graymap *pixels = alloc_graymap(width, height);
+    render_string(pixels, face, &metrics, opts);
+    return pixels;
+}
+
+graymap *render_freetype(const options *opts)
 {
     assert(opts->renderer == R_FREETYPE);
     assert(!opts->is_color);
@@ -271,8 +228,10 @@ void render_freetype(const options *opts)
     error = FT_Set_Char_Size(face, 0, char_size, resolution, resolution);
     CHECK(error);
 
-    render_face(face, opts);
+    graymap *pixels = render_face(face, opts);
     
     FT_Done_Face(face);
     FT_Done_FreeType(library);
+
+    return pixels;
 }

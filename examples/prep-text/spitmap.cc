@@ -5,12 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "output.h"
+
 static const struct option longopts[] = {
     { "align",      required_argument, NULL, 'a' },
     { "color",            no_argument, NULL, 'c' },
     { "font",       required_argument, NULL, 'f' },
     { "help",             no_argument, NULL, 'h' },
     { "hinting",    required_argument, NULL, 'H' },
+    { "output",     required_argument, NULL, 'o' },
     { "renderer",   required_argument, NULL, 'r' },
     { "resolution", required_argument, NULL, 'R' },
     { "size",       required_argument, NULL, 's' },
@@ -35,23 +38,28 @@ options::options()
       resolution(72.0),
       size(12.0),
       translation(0.0),
-      visual(V_ARGB8888),
+      visual(V_A8),
       identifier(NULL),
-      text(NULL)
+      text(NULL),
+      out_file(NULL)
 {}
 
 static void render_text(const options *opts)
 {
+    graymap *graymap;
+
     switch (opts->renderer) {
     case R_FREETYPE:
 
-        render_freetype(opts);
+        graymap = render_freetype(opts);
         break;
 
     case R_AGG:
-        render_agg(opts);
+        graymap = render_agg(opts);
         break;
     }
+    output_graymap(graymap, opts);
+    free_graymap(graymap);
 }
 
 static void usage(FILE *out = stderr)
@@ -147,7 +155,8 @@ int main(int argc, char *argv[])
 
     progname = argv[0];
     while (true) {
-        int opt = getopt_long(argc, argv, "a:cf:hH:r:R:s:t:v:", longopts, NULL);
+        int opt = getopt_long(argc, argv,
+                              "a:cf:hH:o:r:R:s:t:v:", longopts, NULL);
         if (opt == -1)
             break;
         switch (opt) {
@@ -169,6 +178,10 @@ int main(int argc, char *argv[])
 
         case 'H':               // --hinting=y|n
             options.is_hinting = parse_bool(optarg);
+            break;
+
+        case 'o':               // --output=FILE
+            options.out_file = optarg;
             break;
 
         case 'r':               // --renderer=agg|freetype
