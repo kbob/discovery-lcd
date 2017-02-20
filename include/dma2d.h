@@ -95,14 +95,14 @@ extern "C" {
     // Copy src to dest.  Use dest's size and pixel format.
     // No pixel format conversion done.
     extern void dma2d_enqueue_copy_request(pixmap *dest,
-                                           pixmap *src,
+                                           const pixmap *src,
                                            dma2d_callback *);
 
     // Copy src to dest using dest's size.
     // Pixels are converted from src's format to dest's,
     // and alpha may be modified.
     extern void dma2d_enqueue_pfc_request(pixmap *dest,
-                                          pixmap *src,
+                                          const pixmap *src,
                                           xrgb_888 src_color,
                                           dma2d_alpha_mode src_alpha_mode,
                                           uint8_t src_alpha,
@@ -112,8 +112,8 @@ extern "C" {
     // in dest using dest's size.  fg and bg alpha values may be
     // modified before blending.
     extern void dma2d_enqueue_blend_request(pixmap *dest,
-                                            pixmap *fg,
-                                            pixmap *bg,
+                                            const pixmap *fg,
+                                            const pixmap *bg,
                                             xrgb_888 fg_color,
                                             xrgb_888 bg_color,
                                             dma2d_alpha_mode fg_alpha_mode,

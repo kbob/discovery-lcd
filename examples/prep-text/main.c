@@ -1,3 +1,7 @@
+#include <stdlib.h>
+
+#include <libopencm3/cm3/cortex.h>
+
 #include "clock.h"
 #include "dma2d.h"
 #include "lcd.h"
@@ -5,21 +9,43 @@
 #include "sdram.h"
 #include "systick.h"
 
+#include "fhpn-pixmap.inc"
+
 #define MY_CLOCKS (rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ])
 #define MY_SCREEN adafruit_p1596_lcd
 
-#define L1PF argb4444
-#define L1H 480
-#define L1W 800
+#define L1PF  rgb565
+#define L1PFE PF_RGB565
+#define L1H   480
+#define L1W   800
 
-#define IH 100
-#define IW 100
+#define DMA_REQ_COUNT 16
 
-#define DMA_REQ_COUNT 10
+#define BG_COLOR_888 0x11083a
+#define FG_COLOR_888 0xffb229
+#define BG_COLOR     0x1047
 
-static L1PF layer1_pixel_buf[L1H][L1W] SDRAM_BANK_0;
-static a8 image_a8[IH][IW] __attribute__((section(".system_ram")));
-static rgb565 image_rgb565[IH][IW] __attribute__((section(".system_ram")));
+static L1PF layer1_pixel_buf_A[L1H][L1W] SDRAM_BANK_0;
+static L1PF layer1_pixel_buf_B[L1H][L1W] SDRAM_BANK_1;
+
+static pixmap layer1_pixmap_A = {
+    .pitch  = sizeof *layer1_pixel_buf_A,
+    .format = L1PFE,
+    .w      = L1W,
+    .h      = L1H,
+    .pixels = layer1_pixel_buf_A,
+};
+static pixmap layer1_pixmap_B = {
+    .pitch  = sizeof *layer1_pixel_buf_B,
+    .format = L1PFE,
+    .w      = L1W,
+    .h      = L1H,
+    .pixels = layer1_pixel_buf_B,
+};
+
+static pixmap *layer1_front = &layer1_pixmap_A;
+static pixmap *layer1_back = &layer1_pixmap_B;
+
 static dma2d_request dma_requests[DMA_REQ_COUNT];
 static volatile int frame_count;
 
@@ -33,136 +59,125 @@ static lcd_settings my_settings = {
         .alpha = 0xFF,
         .position = { 0, 0 },
         .pixels = {
-            .pitch = sizeof *layer1_pixel_buf,
-            .format = PF_ARGB4444,
+            .pitch = sizeof *layer1_pixel_buf_A,
+            .format = L1PFE,
             .w = L1W,
             .h = L1H,
-            .pixels = layer1_pixel_buf,
+            .pixels = layer1_pixel_buf_A,
         },
     },
 };
 
 static void draw_layer_1(void)
 {
-    for (size_t y = 0; y < L1H; y++)
-        for (size_t x = 0; x < L1W; x++)
-            layer1_pixel_buf[y][x] = 0xF777;
-}
-
-static void draw_images(void)
-{
-    static rgb565 c0 = 0x025f;
-    static rgb565 c1 = 0x97e0;
-    static rgb565 c2 = 0xf81b;
-    static rgb565 c3 = 0x07fa;
-
-    for (int y = 0; y < 50; y++) {
-        int x = 0;
-        for ( ; x < y; x++) {
-            image_a8[y][x] = 0x00;
-            image_rgb565[y][x] = c0;
-        }
-        for ( ; x < 100 - y; x++) {
-            image_a8[y][x] = 0x55;
-            image_rgb565[y][x] = c1;
-        }
-        for ( ; x < 100; x++) {
-            image_a8[y][x] = 0xFF;
-            image_rgb565[y][x] = c3;
+    for (size_t y = 0; y < L1H; y++) {
+        for (size_t x = 0; x < L1W; x++) {
+            layer1_pixel_buf_A[y][x] = BG_COLOR;
+            layer1_pixel_buf_B[y][x] = BG_COLOR;
+            // if (x % 32 == 0) {
+            //     layer1_pixel_buf_A[y][x] = 0xFFFF;
+            //     layer1_pixel_buf_B[y][x] = 0xFFFF;
+            // }
+            // if (y == 10 || y == 50) {
+            //     layer1_pixel_buf_A[y][x] = 0x03C0;
+            //     layer1_pixel_buf_B[y][x] = 0x03C0;
+            // }
         }
     }
-    for (int y = 50; y < 100; y++) {
-        int x = 0;
-        for ( ; x < 100 - y; x++) {
-            image_a8[y][x] = 0x00;
-            image_rgb565[y][x] = c0;
-        }
-        for ( ; x < y; x++) {
-            image_a8[y][x] = 0xAA;
-            image_rgb565[y][x] = c2;
-        }
-        for ( ; x < 100; x++) {
-            image_a8[y][x] = 0xFF;
-            image_rgb565[y][x] = c3;
-        }
+}
+
+static void swap_buffers(void)
+{
+    CM_ATOMIC_BLOCK() {
+        pixmap *t = layer1_front;
+        layer1_front = layer1_back;
+        layer1_back = t;
     }
 }
 
 static void composite_image(void)
 {
-    static const uint32_t colors[] = {
-        0x004aff,
-        0x95ff00,
-        0xff00df,
-        0x00ffd4,
-        0xff8a00,
-        0x4000ff,
-        0x0bff00,
-        0xff0055,
-        0x00a0ff,
-        0xeaff00,
-        0xca00ff,
-        0x00ff7f,
-        0xff3500,
-        0x0016ff,
-        // 0x60ff00,
-    };
-    static const size_t nc = (&colors)[1] - colors;
-    static int rowcol;
-    static int cix;
-    static uint8_t alpha;
-
-    int row = rowcol / 5;
-    int col = rowcol % 5;
-
-    int dest_x = 88 + 132 * col;
-    int dest_y = 60 + 132 * row;
-
-    pixmap dest = {
-        .pitch = my_settings.layer1.pixels.pitch,
-        .format = my_settings.layer1.pixels.format,
-        .w = 100,
-        .h = 100,
-        .pixels = pixmap_pixel_address(&my_settings.layer1.pixels,
-                                       dest_x, dest_y),
-    };
-    if (row != 1) {
-        // alpha-only source format
-        pixmap src = {
-            .pitch = sizeof image_a8[0],
-            .format = PF_A8,
-            .w = IW,
-            .h = IH,
-            .pixels = image_a8,
-        };
-        dma2d_enqueue_pfc_request(&dest, &src,
-                                  colors[cix],
-                                  DAM_PRODUCT, alpha,
-                                  NULL);
-    } else {
-        // RGB source format
-        pixmap src = {
-            .pitch = sizeof image_rgb565[0],
-            .format = PF_RGB565,
-            .w = IW,
-            .h = IH,
-            .pixels = image_rgb565,
-        };
-        dma2d_enqueue_pfc_request(&dest, &src,
-                                  0x00000000,
-                                  DAM_PRODUCT, alpha,
-                                  NULL);
+    static int x_inc = +1;
+    static int x = 100;
+    static int prev_x, prev_prev_x;
+    prev_prev_x = prev_x;
+    prev_x = x;
+    x += x_inc;
+    if (x > 200) {
+        x = 200;
+        x_inc = -x_inc;
     }
-    rowcol = (rowcol + 1) % (3 * 5);
-    cix = (cix + 4) % nc;
-    alpha++;
+    if (x < 100) {
+        x = 100;
+        x_inc = -x_inc;
+    }
+
+    int base_y = 50;
+    for (int i = 0; i < 4; i++) {
+        int ascender_y = base_y - fhpn.ascent;
+
+        // if (i % 2) {
+        //     pixmap pm = {
+        //         .pitch  = layer1_back->pitch,
+        //         .format = layer1_back->format,
+        //         .w      = fhpn.pixels.w + 100,
+        //         .h      = fhpn.line_height,
+        //         .pixels = pixmap_pixel_address(layer1_back,
+        //                                        100,
+        //                                        base_y - fhpn.line_height),
+        //     };
+        //     dma2d_enqueue_solid_request(&pm, 0xFFFF, NULL);
+        // }
+
+        pixmap dest = {
+            .pitch  = layer1_back->pitch,
+            .format = layer1_back->format,
+            .w      = fhpn.pixels.w,
+            .h      = fhpn.pixels.h,
+            .pixels = pixmap_pixel_address(layer1_back, x, ascender_y),
+        };
+
+        // Use System RAM as source for background pixels.  Pixels
+        // are read, but their values do not affect the final value.
+        extern uint8_t system_ram_start[];
+        void *bg_pixels = system_ram_start;
+        pixmap bg_pixmap = {
+            .pitch  = 0,
+            .format = PF_A4,
+            .w      = fhpn.pixels.w,
+            .h      = fhpn.pixels.h,
+            .pixels = bg_pixels,
+        };
+        dma2d_enqueue_blend_request(&dest,
+                                    &fhpn.pixels,
+                                    &bg_pixmap,
+                                    FG_COLOR_888,
+                                    BG_COLOR_888,
+                                    DAM_PRODUCT,
+                                    DAM_REQ,
+                                    0xFF,
+                                    0xFF,
+                                    NULL);
+        if (prev_prev_x && prev_prev_x < x) {
+            dest.w = x - prev_prev_x;
+            dest.pixels = pixmap_pixel_address(layer1_back,
+                                               prev_prev_x, ascender_y);
+            dma2d_enqueue_solid_request(&dest, BG_COLOR, NULL);
+        } else if (prev_prev_x > x) {
+            dest.w = prev_prev_x - x;
+            dest.pixels = pixmap_pixel_address(layer1_back,
+                                               x + fhpn.pixels.w, ascender_y);
+            dma2d_enqueue_solid_request(&dest, BG_COLOR, NULL);
+        }
+        base_y += fhpn.line_height;
+    }
 }
 
 static lcd_settings *frame_callback(lcd_settings *s)
 {
-    (void)s;
     frame_count++;
-    return NULL;
+    s->layer1.pixels.pixels = layer1_front->pixels;
+    return s;
 }
 
 int main(void)
@@ -172,10 +187,10 @@ int main(void)
     lcd_pwm_setup();
     init_lcd(&MY_SCREEN);
     init_sdram();
+    // dma2d_set_dead_time(128);
     init_dma2d(dma_requests, DMA_REQ_COUNT);
 
     draw_layer_1();
-    draw_images();
     lcd_set_frame_callback(frame_callback);
     lcd_load_settings(&my_settings, false);
     lcd_fade(0, 65535, 0, 2000);
@@ -183,6 +198,7 @@ int main(void)
     while (1) {
         if (fc + 2 < frame_count) {
             fc = frame_count;
+            swap_buffers();
             composite_image();
         }
     }

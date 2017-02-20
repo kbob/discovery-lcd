@@ -67,3 +67,14 @@ where
         float advance_y;
     } text_pixmap;
 
+## To Do
+
+Implement/test more FreeType modes.
+
+Implement AGG rendering
+
+Animate by subpixel amounts
+
+in branch main:
+  Remove `WITH_INTERRUPTS_ENABLED`
+  Make scroll demo alternate between two images.

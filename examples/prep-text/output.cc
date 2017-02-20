@@ -19,14 +19,19 @@ static const char *renderer_name(renderer r)
     }
 }
 
-static const char *pixfmt_name(visual v)
+static const char *visual_name(visual v)
 {
     return "a8";                // XXX
 }
 
-static int pixfmt_size(visual v)
+static const char *visual_enum(visual v)
 {
-    return 1;
+    return "PF_A8";             // XXX
+}
+
+static int visual_size(visual v)
+{
+    return 1;                   // XXX
 }
 
 __attribute__((format(printf, 2, 3)))
@@ -52,8 +57,11 @@ void output_graymap(const graymap *map, const options *opts)
             exit(1);
         }
     }
-    const char *ident = opts->identifier;
-    const char *type_name = pixfmt_name(opts->visual);
+
+    const char *ident     = opts->identifier;
+    const char *type_name = visual_name(opts->visual);
+    const char *type_enum = visual_enum(opts->visual);
+    const int pitch       = map->w * visual_size(opts->visual);
 
     // Make a comment block to describe this file.
     fpcomment(out, "This file automatically created by %s.", progname);
@@ -70,10 +78,10 @@ void output_graymap(const graymap *map, const options *opts)
     fpcomment(out, "    color       = %s", opts->is_color   ? "true" : "false");
     fpcomment(out, "    hinting     = %s", opts->is_hinting ? "true" : "false");
     fpcomment(out, "    translation = %g", opts->translation);
-    fpcomment(out, "    visual      = %s", type_name);
+    fpcomment(out, "    visual      = %s (%s)", type_name, type_enum);
     fprintf(out, "\n");
 
-    fprintf(out, "#include \"pixmap.h\"\n");
+    fprintf(out, "#include \"text.h\"\n");
     fprintf(out, "\n");
     fprintf(out, "static const %s %s_bits[] = {\n", type_name, ident);
     int col = 0;
@@ -102,11 +110,15 @@ void output_graymap(const graymap *map, const options *opts)
     fprintf(out, "};\n");
     fprintf(out, "\n");
     fprintf(out, "const text_pixmap %s = {\n", ident);
-    fprintf(out, "    %s_bits,\n", ident);
-    fprintf(out, "    %zu\n", map->w);
-    fprintf(out, "    %zu\n", map->h);
-    fprintf(out, "    %d,\n", map->ascent);
-    fprintf(out, "    %d,\n", map->descent);
-    fprintf(out, "    %zu,\n", map->w * pixfmt_size(opts->visual));
+    fprintf(out, "    .pixels = {\n");
+    fprintf(out, "        .pitch   = %d,\n", pitch);
+    fprintf(out, "        .format  = %s,\n", type_enum);
+    fprintf(out, "        .w       = %zu,\n", map->w);
+    fprintf(out, "        .h       = %zu,\n", map->h);
+    fprintf(out, "        .pixels  = (void *)%s_bits,\n", ident);
+    fprintf(out, "    },\n");
+    fprintf(out, "    .ascent      = %d,\n", map->ascent);
+    fprintf(out, "    .descent     = %d,\n", map->descent);
+    fprintf(out, "    .line_height = %d,\n", map->line_height);
     fprintf(out, "};\n");
 }

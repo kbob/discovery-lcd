@@ -19,6 +19,8 @@ extern "C" {
     #define SDRAM_BANK_2 SDRAM_BANK(2)
     #define SDRAM_BANK_3 SDRAM_BANK(3)
 
+    #define SYSTEM_RAM   __attribute__((section(".system_ram")))
+
 #ifdef __cplusplus
 }
 #endif

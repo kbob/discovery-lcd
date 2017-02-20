@@ -10,7 +10,7 @@
 
        PIXMAPS := $(patsubst %,%-pixmap.inc, fhpn)
     $D_PIXMAPS := $(PIXMAPS:%=$D/%)
-   TEXT_STRING := "Hello, World!"
+   TEXT_STRING := "Squdgy fez, blank jimp crwth vox."
 spitmap_CCFILES := spitmap.cc freetype.cc agg.cc graymap.cc unicode.cc output.cc
 $D/spitmap_CCFILES := $(spitmap_CCFILES:%=$D/%)
 $D/spitmap_OFILES := $($D/spitmap_CCFILES:%.cc=%.o)
@@ -27,8 +27,11 @@ $($D_ELF): $($D_OFILES) $(LIBGFX)
 
 $D/main.o: $($D_PIXMAPS)
 
+$($D_PIXMAPS): $D/spitmap
+
+$D_SPITFLAGS := --font=Lato-Light --resolution=188 --size=10
 $D/fhpn-pixmap.inc: $D/spitmap
-	$D/spitmap -o $@ --font=Lato-Light fhpn $(TEXT_STRING)
+	$D/spitmap -o $@ $($D_SPITFLAGS) fhpn $(TEXT_STRING)
 
 $D/spitmap:          CC := $(HOSTCXX)
 $D/spitmap:     LDFLAGS :=

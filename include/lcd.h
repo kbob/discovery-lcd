@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include "ipoint.h"
 #include "pixmap.h"
 
 #ifdef __cplusplus
@@ -33,10 +34,6 @@ extern "C" {
         bool     use_dither;
         // XXX might need to set polarity for vsync, hsync. DE, dotclock.
     } lcd_config;
-
-    typedef struct ipoint {
-        int       x, y;
-    } ipoint;
 
     typedef xrgb_888 lcd_clut16[16];
     typedef xrgb_888 lcd_clut256[256];

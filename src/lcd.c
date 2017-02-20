@@ -435,7 +435,8 @@ extern void init_lcd(const lcd_config *cfg)
     LTDC_GCR |= LTDC_GCR_LTDC_ENABLE;
 }
 
-bool lcd_halt_on_error = true;
+// bool lcd_halt_on_error = true;
+bool lcd_halt_on_error = false;
 
 void lcd_tft_isr(void)
 {

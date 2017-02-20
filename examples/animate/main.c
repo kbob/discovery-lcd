@@ -1,5 +1,6 @@
+#include <libopencm3/cm3/cortex.h>
+
 #include "clock.h"
-#include "intr.h"
 #include "lcd.h"
 #include "lcd-pwm.h"
 #include "sdram.h"
@@ -105,7 +106,7 @@ static void update_fps(void)
     uint32_t now = system_millis;
     
     if (now >= next_time) {
-        WITH_INTERRUPTS_MASKED {
+        CM_ATOMIC_BLOCK() {
             fps = frame_counter;
             frame_counter = 0;
         }

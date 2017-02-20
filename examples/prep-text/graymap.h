@@ -9,10 +9,13 @@ struct graymap {
     uint8_t *pixels;
     size_t w, h;
     int ascent, descent;
+    int line_height;
     ssize_t pitch;
 };
 
-extern graymap *alloc_graymap(size_t w, size_t h);
+extern graymap *alloc_graymap(size_t w,
+                              int ascent, int descent,
+                              int line_height);
 
 extern void free_graymap(graymap *);
 

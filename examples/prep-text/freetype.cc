@@ -200,8 +200,10 @@ static graymap *render_face(FT_Face face, const options *opts)
 {
     string_metrics metrics = collect_metrics(face, opts);
     size_t width = ceil(metrics.width);
-    size_t height = ceil(metrics.ascent) + ceil(metrics.descent);
-    graymap *pixels = alloc_graymap(width, height);
+    size_t ascent = ceil(metrics.ascent);
+    size_t descent = ceil(metrics.descent);
+    size_t height = round(metrics.height);
+    graymap *pixels = alloc_graymap(width, ascent, descent, height);
     render_string(pixels, face, &metrics, opts);
     return pixels;
 }

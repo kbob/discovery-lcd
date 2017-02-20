@@ -2,11 +2,10 @@
 
 #include <assert.h>
 
+#include <libopencm3/cm3/cortex.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/dma2d.h>
 #include <libopencm3/stm32/rcc.h>
-
-#include "intr.h"
 
 static dma2d_request *request_queue;
 static volatile size_t rq_size;
@@ -53,7 +52,7 @@ bool dma2d_queue_is_full(void)
 {
     assert(request_queue);
     size_t h, t, s;
-    WITH_INTERRUPTS_MASKED {
+    CM_ATOMIC_BLOCK() {
         h = rq_head;
         t = rq_tail;
         s = rq_size;
@@ -65,7 +64,7 @@ bool dma2d_queue_is_empty(void)
 {
     assert(request_queue);
     size_t h, t;
-    WITH_INTERRUPTS_MASKED {
+    CM_ATOMIC_BLOCK() {
         h = rq_head;
         t = rq_tail;
     }
@@ -75,7 +74,7 @@ bool dma2d_queue_is_empty(void)
 bool dma2d_is_idle(void)
 {
     bool busy;
-    WITH_INTERRUPTS_MASKED {
+    CM_ATOMIC_BLOCK() {
         busy = dma_busy;
     }
     return !busy;
@@ -338,7 +337,7 @@ static void start_clut_request(dma2d_request *req)
 static void start_request(void)
 {
     dma2d_request *req;
-    WITH_INTERRUPTS_MASKED {
+    CM_ATOMIC_BLOCK() {
         req = &request_queue[rq_head];
     }
 
@@ -377,7 +376,7 @@ static dma2d_request *alloc_request(void)
         continue;
 
     dma2d_request *req;
-    WITH_INTERRUPTS_MASKED {
+    CM_ATOMIC_BLOCK() {
         req = &request_queue[rq_tail];
     }
     return req;
@@ -386,7 +385,7 @@ static dma2d_request *alloc_request(void)
 static void enqueue_request(dma2d_request *req)
 {
     bool busy;
-    WITH_INTERRUPTS_MASKED {
+    CM_ATOMIC_BLOCK() {
         assert(req == &request_queue[rq_tail]);
         rq_tail = (rq_tail + 1) % rq_size;
         busy = dma_busy;
@@ -413,7 +412,7 @@ void dma2d_enqueue_solid_request(pixmap *dest,
 }
 
 void dma2d_enqueue_copy_request(pixmap *dest,
-                                pixmap *src,
+                                const pixmap *src,
                                 dma2d_callback *cb)
 {
     CHECK_DEST_FORMAT(dest);
@@ -429,7 +428,7 @@ void dma2d_enqueue_copy_request(pixmap *dest,
 }
 
 void dma2d_enqueue_pfc_request(pixmap *dest,
-                               pixmap *src,
+                               const pixmap *src,
                                xrgb_888 src_color,
                                dma2d_alpha_mode src_alpha_mode,
                                uint8_t src_alpha,
@@ -451,8 +450,8 @@ void dma2d_enqueue_pfc_request(pixmap *dest,
 }
 
 void dma2d_enqueue_blend_request(pixmap *dest,
-                                 pixmap *fg,
-                                 pixmap *bg,
+                                 const pixmap *fg,
+                                 const pixmap *bg,
                                  xrgb_888 fg_color,
                                  xrgb_888 bg_color,
                                  dma2d_alpha_mode fg_alpha_mode,
